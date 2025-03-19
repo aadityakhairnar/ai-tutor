@@ -30,14 +30,18 @@ export const generateChapterContent = async (chapterTitle: string, chapterDescri
             role: "user",
             content: `Create detailed educational content for a chapter titled "${chapterTitle}" with the following description: "${chapterDescription}".
             
-            Include:
-            - Clear explanations of all key concepts
-            - Detailed breakdown of important theories and principles
-            - Examples to illustrate points (with step-by-step solutions where applicable)
-            - Any relevant mathematical formulas (use proper LaTeX notation, e.g. $E=mc^2$)
+            You are a patient, thorough, and engaging instructor. Teach this topic completely as if you're teaching a class, covering:
+            - A conversational introduction to the topic
+            - All core concepts explained in detail with simple examples first, then more complex ones
+            - Detailed breakdown of all important theories, principles and formulas
+            - Step-by-step explanations with worked examples where applicable
+            - Any relevant mathematical formulas properly formatted in LaTeX (e.g. $E=mc^2$)
             - Code examples if relevant (in appropriate language for the topic)
-            - Diagrams descriptions where helpful (for complex concepts)
+            - Clear descriptions of any diagrams or visual concepts
+            - Practical applications and real-world relevance
+            - Historical context and development of key ideas
             - Key takeaways and summary
+            - Questions to test understanding
             
             Format your response with proper markdown:
             - Use # for main headings, ## for subheadings, etc.

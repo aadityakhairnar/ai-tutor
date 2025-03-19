@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -10,6 +11,12 @@ import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import CourseMenu from '@/components/CourseMenu';
 import { generateChapterContent } from '@/services/contentGenerator';
+import ReactMarkdown from 'react-markdown';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import rehypeHighlight from 'rehype-highlight';
+import 'katex/dist/katex.min.css';
+import 'highlight.js/styles/github-dark.css';
 
 const Course = () => {
   const { id } = useParams<{ id: string }>();
@@ -194,7 +201,7 @@ const Course = () => {
               <div className="lg:col-span-2 order-1 lg:order-2">
                 {selectedChapterContent ? (
                   <div className="bg-accent/30 p-6 rounded-md">
-                    <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center justify-between mb-6">
                       <h2 className="text-xl font-medium">{selectedChapterContent.title}</h2>
                       <Button
                         variant="outline"
@@ -221,12 +228,17 @@ const Course = () => {
                     {isLoading ? (
                       <div className="flex flex-col items-center justify-center py-12">
                         <div className="w-16 h-16 border-4 border-primary/30 border-t-primary rounded-full animate-spin mb-4"></div>
-                        <p className="text-muted-foreground">Generating chapter content...</p>
+                        <p className="text-muted-foreground">Generating comprehensive content for this topic...</p>
                       </div>
                     ) : (
                       <div className="prose prose-stone dark:prose-invert max-w-none">
                         {chapterContent ? (
-                          <div dangerouslySetInnerHTML={{ __html: chapterContent.replace(/\n/g, '<br/>') }} />
+                          <ReactMarkdown
+                            remarkPlugins={[remarkMath]}
+                            rehypePlugins={[rehypeKatex, rehypeHighlight]}
+                          >
+                            {chapterContent}
+                          </ReactMarkdown>
                         ) : (
                           <p>No content available for this chapter.</p>
                         )}
