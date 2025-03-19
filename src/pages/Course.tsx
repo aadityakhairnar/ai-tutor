@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, BookOpen, CheckCircle, Circle, Menu } from 'lucide-react';
+import { ArrowLeft, BookOpen, CheckCircle, Circle, Menu, Play } from 'lucide-react';
 import { toast } from 'sonner';
 import { useStore, Course as CourseType } from '@/store/useStore';
 import PageTransition from '@/components/PageTransition';
@@ -26,6 +26,7 @@ const Course = () => {
   const [selectedChapter, setSelectedChapter] = useState<string | null>(null);
   const [chapterContent, setChapterContent] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingChapterId, setLoadingChapterId] = useState<string | null>(null);
   
   useEffect(() => {
     if (id) {
@@ -52,41 +53,18 @@ const Course = () => {
       if (selectedChapter && course) {
         const chapter = course.chapters?.find(c => c.id === selectedChapter);
         if (chapter) {
-          // If content is just a placeholder (less than 100 chars), generate new content
-          if (!chapter.content || chapter.content.length < 100) {
-            setIsLoading(true);
-            try {
-              const content = await generateChapterContent(chapter.title, chapter.content || "");
-              
-              // Update chapter content in the store
-              const updatedChapters = course.chapters?.map(ch => 
-                ch.id === selectedChapter ? { ...ch, content } : ch
-              );
-              
-              if (updatedChapters) {
-                updateCourse(course.id, { 
-                  chapters: updatedChapters,
-                  updatedAt: new Date().toISOString()
-                });
-              }
-              
-              setChapterContent(content);
-            } catch (error) {
-              console.error("Failed to load chapter content:", error);
-              setChapterContent(chapter.content || "Failed to load content. Please try again.");
-            } finally {
-              setIsLoading(false);
-            }
-          } else {
-            // Use existing content
+          // If content exists and is not just a placeholder, use it
+          if (chapter.content && chapter.content.length > 100) {
             setChapterContent(chapter.content);
+          } else {
+            setChapterContent(chapter.content || "Click 'Start Learning' to generate detailed content for this chapter.");
           }
         }
       }
     }
     
     loadChapterContent();
-  }, [selectedChapter, course, updateCourse]);
+  }, [selectedChapter, course]);
   
   const handleChapterClick = (chapterId: string) => {
     setSelectedChapter(chapterId);
@@ -106,6 +84,45 @@ const Course = () => {
         toast.success('Chapter marked as completed');
       } else {
         toast.info('Chapter marked as incomplete');
+      }
+    }
+  };
+  
+  const handleStartLearning = async (chapterId: string) => {
+    if (course) {
+      const chapter = course.chapters?.find(c => c.id === chapterId);
+      if (chapter) {
+        setLoadingChapterId(chapterId);
+        setIsLoading(true);
+        
+        try {
+          const content = await generateChapterContent(chapter.title, chapter.content || "");
+          
+          // Update chapter content in the store
+          const updatedChapters = course.chapters?.map(ch => 
+            ch.id === chapterId ? { ...ch, content } : ch
+          );
+          
+          if (updatedChapters) {
+            updateCourse(course.id, { 
+              chapters: updatedChapters,
+              updatedAt: new Date().toISOString()
+            });
+            
+            // Update selected chapter if this is the current one
+            if (chapterId === selectedChapter) {
+              setChapterContent(content);
+            }
+          }
+          
+          toast.success('Chapter content generated successfully');
+        } catch (error) {
+          console.error("Failed to generate chapter content:", error);
+          toast.error('Failed to generate content. Please try again.');
+        } finally {
+          setIsLoading(false);
+          setLoadingChapterId(null);
+        }
       }
     }
   };
@@ -174,25 +191,49 @@ const Course = () => {
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: index * 0.05 }}
                     >
-                      <button
-                        onClick={() => handleChapterClick(chapter.id)}
-                        className={`flex items-start w-full text-left p-3 rounded-md transition-colors ${
-                          selectedChapter === chapter.id
-                            ? 'bg-primary/10 text-primary'
-                            : 'hover:bg-accent'
-                        }`}
-                      >
-                        <div className="mr-3 mt-1">
-                          {chapter.completed ? (
-                            <CheckCircle className="w-4 h-4 text-green-600" />
-                          ) : (
-                            <Circle className="w-4 h-4 text-muted-foreground" />
-                          )}
-                        </div>
-                        <div>
-                          <span className="text-sm">{index + 1}. {chapter.title}</span>
-                        </div>
-                      </button>
+                      <div className="flex flex-col">
+                        <button
+                          onClick={() => handleChapterClick(chapter.id)}
+                          className={`flex items-start w-full text-left p-3 rounded-md transition-colors ${
+                            selectedChapter === chapter.id
+                              ? 'bg-primary/10 text-primary'
+                              : 'hover:bg-accent'
+                          }`}
+                        >
+                          <div className="mr-3 mt-1">
+                            {chapter.completed ? (
+                              <CheckCircle className="w-4 h-4 text-green-600" />
+                            ) : (
+                              <Circle className="w-4 h-4 text-muted-foreground" />
+                            )}
+                          </div>
+                          <div>
+                            <span className="text-sm">{index + 1}. {chapter.title}</span>
+                          </div>
+                        </button>
+                        
+                        {(!chapter.content || chapter.content.length < 100) && (
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="ml-10 mt-2 w-auto"
+                            onClick={() => handleStartLearning(chapter.id)}
+                            disabled={isLoading && loadingChapterId === chapter.id}
+                          >
+                            {isLoading && loadingChapterId === chapter.id ? (
+                              <div className="flex items-center">
+                                <div className="animate-spin mr-2 h-4 w-4 border-2 border-primary/30 border-t-primary rounded-full"></div>
+                                <span>Generating...</span>
+                              </div>
+                            ) : (
+                              <>
+                                <Play className="mr-2 h-4 w-4" /> 
+                                <span>Start Learning</span>
+                              </>
+                            )}
+                          </Button>
+                        )}
+                      </div>
                     </motion.div>
                   ))}
                 </div>
@@ -203,44 +244,70 @@ const Course = () => {
                   <div className="bg-accent/30 p-6 rounded-md">
                     <div className="flex items-center justify-between mb-6">
                       <h2 className="text-xl font-medium">{selectedChapterContent.title}</h2>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleChapterCompletion(
-                          selectedChapterContent.id, 
-                          !selectedChapterContent.completed
+                      <div className="flex items-center gap-2">
+                        {(!selectedChapterContent.content || selectedChapterContent.content.length < 100) && (
+                          <Button 
+                            variant="default" 
+                            size="sm"
+                            onClick={() => handleStartLearning(selectedChapterContent.id)}
+                            disabled={isLoading}
+                          >
+                            {isLoading && loadingChapterId === selectedChapterContent.id ? (
+                              <div className="flex items-center">
+                                <div className="animate-spin mr-2 h-4 w-4 border-2 border-background/30 border-t-background rounded-full"></div>
+                                <span>Generating...</span>
+                              </div>
+                            ) : (
+                              <>
+                                <Play className="mr-2 h-4 w-4" /> 
+                                <span>Start Learning</span>
+                              </>
+                            )}
+                          </Button>
                         )}
-                      >
-                        {selectedChapterContent.completed ? (
-                          <>
-                            <Circle className="mr-2 h-4 w-4" />
-                            <span>Mark as Incomplete</span>
-                          </>
-                        ) : (
-                          <>
-                            <CheckCircle className="mr-2 h-4 w-4" />
-                            <span>Mark as Complete</span>
-                          </>
-                        )}
-                      </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleChapterCompletion(
+                            selectedChapterContent.id, 
+                            !selectedChapterContent.completed
+                          )}
+                        >
+                          {selectedChapterContent.completed ? (
+                            <>
+                              <Circle className="mr-2 h-4 w-4" />
+                              <span>Mark as Incomplete</span>
+                            </>
+                          ) : (
+                            <>
+                              <CheckCircle className="mr-2 h-4 w-4" />
+                              <span>Mark as Complete</span>
+                            </>
+                          )}
+                        </Button>
+                      </div>
                     </div>
                     
-                    {isLoading ? (
+                    {isLoading && loadingChapterId === selectedChapterContent.id ? (
                       <div className="flex flex-col items-center justify-center py-12">
                         <div className="w-16 h-16 border-4 border-primary/30 border-t-primary rounded-full animate-spin mb-4"></div>
                         <p className="text-muted-foreground">Generating comprehensive content for this topic...</p>
                       </div>
                     ) : (
                       <div className="prose prose-stone dark:prose-invert max-w-none">
-                        {chapterContent ? (
+                        {selectedChapterContent.content && selectedChapterContent.content.length > 100 ? (
                           <ReactMarkdown
                             remarkPlugins={[remarkMath]}
                             rehypePlugins={[rehypeKatex, rehypeHighlight]}
                           >
-                            {chapterContent}
+                            {selectedChapterContent.content}
                           </ReactMarkdown>
                         ) : (
-                          <p>No content available for this chapter.</p>
+                          <div className="text-center py-12">
+                            <BookOpen className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                            <p className="text-muted-foreground mb-4">No detailed content available for this chapter yet.</p>
+                            <p className="text-sm text-muted-foreground">Click the "Start Learning" button to generate comprehensive learning material.</p>
+                          </div>
                         )}
                       </div>
                     )}
