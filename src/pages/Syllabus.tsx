@@ -17,7 +17,7 @@ const Syllabus = () => {
   const topic = location.state?.topic || 'Unknown Topic';
   const [loading, setLoading] = useState(true);
   const [chapters, setChapters] = useState<Chapter[]>([]);
-  const { setSyllabus, addCourse, courses } = useStore();
+  const { setSyllabus, addCourse, courses, updateCourse } = useStore();
   const [generatingChapterId, setGeneratingChapterId] = useState<string | null>(null);
   
   useEffect(() => {
@@ -88,7 +88,7 @@ const Syllabus = () => {
     }
   };
   
-  const handleStartCourse = () => {
+  const handleStartCourse = async () => {
     const newCourse: Course = {
       id,
       title: topic,
@@ -106,6 +106,14 @@ const Syllabus = () => {
     } else {
       addCourse(newCourse);
       toast.success('Course added to your learning journey');
+    }
+    
+    if (chapters && chapters.length > 0) {
+      const firstChapter = chapters[0];
+      if (!firstChapter.content || firstChapter.content.length < 100) {
+        await handleGenerateChapterContent(firstChapter);
+        return; // Navigation happens in handleGenerateChapterContent
+      }
     }
     
     navigate(`/classroom/course/${id}`);
@@ -137,7 +145,7 @@ const Syllabus = () => {
   const handleGenerateChapterContent = async (chapter: Chapter) => {
     try {
       setGeneratingChapterId(chapter.id);
-      const detailedContent = await generateChapterContent(chapter.title, chapter.content);
+      const detailedContent = await generateChapterContent(chapter.title, chapter.content || "");
       
       const updatedChapters = chapters.map(ch => 
         ch.id === chapter.id ? { ...ch, content: detailedContent } : ch
@@ -166,6 +174,17 @@ const Syllabus = () => {
           updatedAt: new Date().toISOString(),
           chapters: updatedChapters
         });
+      } else {
+        const updatedCourseChapters = existingCourse.chapters?.map(ch => 
+          ch.id === chapter.id ? { ...ch, content: detailedContent } : ch
+        );
+        
+        if (updatedCourseChapters) {
+          updateCourse(existingCourse.id, {
+            chapters: updatedCourseChapters,
+            updatedAt: new Date().toISOString()
+          });
+        }
       }
       
       navigate(`/classroom/${id}/content/${chapter.id}`);
@@ -312,3 +331,4 @@ const Syllabus = () => {
 };
 
 export default Syllabus;
+

@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -30,8 +31,19 @@ const Course = () => {
         const firstIncomplete = foundCourse.chapters?.find(chapter => !chapter.completed);
         if (firstIncomplete) {
           setSelectedChapter(firstIncomplete.id);
+          
+          // Auto-generate content for first chapter if needed
+          if (!firstIncomplete.content || firstIncomplete.content.length < 100) {
+            handleStartLearning(firstIncomplete.id);
+          }
         } else if (foundCourse.chapters && foundCourse.chapters.length > 0) {
           setSelectedChapter(foundCourse.chapters[0].id);
+          
+          // Auto-generate content for first chapter if needed
+          const firstChapter = foundCourse.chapters[0];
+          if (!firstChapter.content || firstChapter.content.length < 100) {
+            handleStartLearning(firstChapter.id);
+          }
         }
       } else {
         toast.error('Course not found');
@@ -40,17 +52,18 @@ const Course = () => {
     }
   }, [id, courses, navigate]);
   
-  const handleChapterClick = (chapterId: string) => {
+  const handleChapterClick = async (chapterId: string) => {
     setSelectedChapter(chapterId);
     
-    // Navigate to content page if the course exists
+    // Find chapter and check if content needs to be generated
     if (course) {
       const chapter = course.chapters?.find(ch => ch.id === chapterId);
       if (chapter) {
-        // Check if chapter has content, if not, generate it first
+        // Always generate content if it doesn't exist or is too short
         if (!chapter.content || chapter.content.length < 100) {
-          handleStartLearning(chapterId);
+          await handleStartLearning(chapterId);
         } else {
+          // If content exists, navigate directly to content page
           navigate(`/classroom/${course.id}/content/${chapterId}`);
         }
       }
@@ -95,6 +108,14 @@ const Course = () => {
               chapters: updatedChapters,
               updatedAt: new Date().toISOString()
             });
+            
+            // Update the local course state
+            const updatedCourse = {
+              ...course,
+              chapters: updatedChapters,
+              updatedAt: new Date().toISOString()
+            };
+            setCourse(updatedCourse);
           }
           
           toast.success('Chapter content generated successfully');
