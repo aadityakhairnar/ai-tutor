@@ -14,12 +14,16 @@ import rehypeKatex from 'rehype-katex';
 import rehypeHighlight from 'rehype-highlight';
 import 'katex/dist/katex.min.css';
 import 'highlight.js/styles/github-dark.css';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Progress } from '@/components/ui/progress';
 
 const ContentPage = () => {
   const { courseId, chapterId } = useParams<{ courseId: string; chapterId: string }>();
   const navigate = useNavigate();
   const { courses, updateCourse, markChapterCompleted } = useStore();
   const [isLoading, setIsLoading] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [contentDisplayed, setContentDisplayed] = useState(false);
   
   // Find the course and chapter
   const course = courses.find(c => c.id === courseId);
@@ -37,17 +41,26 @@ const ContentPage = () => {
       navigate(`/classroom/course/${courseId}`);
       return;
     }
-
-    // Check if content needs to be generated
-    if (!chapter.content || chapter.content.length < 100) {
-      generateContent();
-    }
   }, [course, chapter, courseId, chapterId, navigate]);
   
   const generateContent = async () => {
     if (!course || !chapter) return;
     
     setIsLoading(true);
+    setProgress(0);
+    setContentDisplayed(false);
+    
+    // Simulate progress
+    const progressInterval = setInterval(() => {
+      setProgress(prev => {
+        if (prev >= 90) {
+          clearInterval(progressInterval);
+          return 90;
+        }
+        return prev + 10;
+      });
+    }, 500);
+    
     try {
       // Generate content using the chapter title and description
       const content = await generateChapterContent(chapter.title, chapter.content || "");
@@ -62,11 +75,16 @@ const ContentPage = () => {
         updatedAt: new Date().toISOString()
       });
       
+      // Set progress to 100% and display content
+      setProgress(100);
+      setContentDisplayed(true);
+      
       toast.success('Chapter content generated successfully');
     } catch (error) {
       console.error("Failed to generate chapter content:", error);
       toast.error('Failed to generate content. Please try again.');
     } finally {
+      clearInterval(progressInterval);
       setIsLoading(false);
     }
   };
@@ -99,6 +117,8 @@ const ContentPage = () => {
       </PageTransition>
     );
   }
+  
+  const hasContent = chapter.content && chapter.content.length > 100;
   
   return (
     <PageTransition>
@@ -139,10 +159,24 @@ const ContentPage = () => {
             
             {isLoading ? (
               <div className="flex flex-col items-center justify-center py-12">
-                <div className="w-16 h-16 border-4 border-primary/30 border-t-primary rounded-full animate-spin mb-4"></div>
-                <p className="text-muted-foreground">Generating comprehensive content for this topic...</p>
+                <div className="w-full max-w-md mb-4">
+                  <Progress value={progress} className="h-2" />
+                  <p className="text-center text-sm text-muted-foreground mt-2">
+                    {progress < 100 ? 'Generating comprehensive content...' : 'Almost done...'}
+                  </p>
+                </div>
+                <div className="space-y-4 w-full max-w-3xl mt-8">
+                  <Skeleton className="h-8 w-3/4" />
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-2/3" />
+                  <Skeleton className="h-8 w-1/2 mt-6" />
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-5/6" />
+                </div>
               </div>
-            ) : chapter.content && chapter.content.length > 100 ? (
+            ) : hasContent && contentDisplayed ? (
               <div className="prose prose-stone dark:prose-invert max-w-none">
                 <ReactMarkdown
                   remarkPlugins={[remarkMath]}
@@ -151,10 +185,27 @@ const ContentPage = () => {
                   {chapter.content}
                 </ReactMarkdown>
               </div>
+            ) : hasContent && !contentDisplayed ? (
+              <div className="flex flex-col items-center justify-center py-12">
+                <p className="text-muted-foreground mb-4">The content for this chapter has already been generated.</p>
+                <Button 
+                  onClick={() => setContentDisplayed(true)}
+                  className="mt-2"
+                >
+                  <BookOpen className="mr-2 h-4 w-4" />
+                  View Full Content
+                </Button>
+              </div>
             ) : (
               <div className="flex flex-col items-center justify-center py-12">
-                <div className="w-16 h-16 border-4 border-primary/30 border-t-primary rounded-full animate-spin mb-4"></div>
-                <p className="text-muted-foreground">Generating comprehensive content for this topic...</p>
+                <p className="text-muted-foreground mb-4">No content has been generated for this chapter yet.</p>
+                <Button 
+                  onClick={generateContent}
+                  className="mt-2"
+                >
+                  <BookOpen className="mr-2 h-4 w-4" />
+                  Generate & View Content
+                </Button>
               </div>
             )}
           </div>
