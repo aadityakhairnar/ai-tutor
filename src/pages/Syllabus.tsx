@@ -2,10 +2,11 @@
 import { useEffect, useState } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, CheckCircle, ClipboardList, RefreshCw, CalendarDays, BookOpen } from 'lucide-react';
+import { ArrowLeft, CheckCircle, ClipboardList, RefreshCw, CalendarDays, BookOpen, Play } from 'lucide-react';
 import { toast } from 'sonner';
 import { useStore, Chapter, Course } from '@/store/useStore';
 import { generateSyllabus, SyllabusChapter } from '@/services/openai';
+import { generateChapterContent } from '@/services/contentGenerator';
 import PageTransition from '@/components/PageTransition';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -18,6 +19,7 @@ const Syllabus = () => {
   const [loading, setLoading] = useState(true);
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const { setSyllabus, addCourse, courses } = useStore();
+  const [generatingChapterId, setGeneratingChapterId] = useState<string | null>(null);
   
   useEffect(() => {
     const fetchSyllabus = async () => {
@@ -136,6 +138,35 @@ const Syllabus = () => {
     
     navigate('/dashboard');
   };
+
+  const handleGenerateChapterContent = async (chapter: Chapter) => {
+    try {
+      setGeneratingChapterId(chapter.id);
+      const detailedContent = await generateChapterContent(chapter.title, chapter.content);
+      
+      // Update the chapters with the new detailed content
+      const updatedChapters = chapters.map(ch => 
+        ch.id === chapter.id ? { ...ch, content: detailedContent } : ch
+      );
+      
+      setChapters(updatedChapters);
+      
+      // Update the syllabus in the store
+      setSyllabus({
+        id: id || '',
+        topic,
+        chapters: updatedChapters,
+        loading: false
+      });
+      
+      toast.success(`Generated detailed content for "${chapter.title}"`);
+    } catch (error) {
+      console.error('Error generating chapter content:', error);
+      toast.error('Failed to generate chapter content. Please try again.');
+    } finally {
+      setGeneratingChapterId(null);
+    }
+  };
   
   return (
     <PageTransition>
@@ -220,10 +251,33 @@ const Syllabus = () => {
                         transition={{ delay: index * 0.1 }}
                         className="bg-accent/30 p-5 rounded-md"
                       >
-                        <h3 className="text-lg font-medium mb-2">
-                          {index + 1}. {chapter.title}
-                        </h3>
-                        <p className="text-muted-foreground text-sm">{chapter.content}</p>
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                          <div>
+                            <h3 className="text-lg font-medium mb-2">
+                              {index + 1}. {chapter.title}
+                            </h3>
+                            <p className="text-muted-foreground text-sm">{chapter.content}</p>
+                          </div>
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            className="self-start sm:self-center whitespace-nowrap"
+                            onClick={() => handleGenerateChapterContent(chapter)}
+                            disabled={generatingChapterId === chapter.id}
+                          >
+                            {generatingChapterId === chapter.id ? (
+                              <>
+                                <div className="w-4 h-4 mr-2 border-2 border-primary/30 border-t-primary rounded-full animate-spin"></div>
+                                <span>Generating...</span>
+                              </>
+                            ) : (
+                              <>
+                                <Play className="mr-2 h-4 w-4" />
+                                <span>Generate Content</span>
+                              </>
+                            )}
+                          </Button>
+                        </div>
                       </motion.div>
                     ))}
                   </div>
