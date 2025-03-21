@@ -207,31 +207,6 @@ const Course = () => {
                             <span className="text-sm">{index + 1}. {chapter.title}</span>
                           </div>
                         </button>
-                        
-                        {(!chapter.content || chapter.content.length < 100) && (
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className="ml-10 mt-2 w-auto"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleStartLearning(chapter.id);
-                            }}
-                            disabled={isLoading && loadingChapterId === chapter.id}
-                          >
-                            {isLoading && loadingChapterId === chapter.id ? (
-                              <div className="flex items-center">
-                                <div className="animate-spin mr-2 h-4 w-4 border-2 border-primary/30 border-t-primary rounded-full"></div>
-                                <span>Generating...</span>
-                              </div>
-                            ) : (
-                              <>
-                                <Play className="mr-2 h-4 w-4" /> 
-                                <span>Start Learning</span>
-                              </>
-                            )}
-                          </Button>
-                        )}
                       </div>
                     </motion.div>
                   ))}

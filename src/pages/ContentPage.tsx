@@ -49,7 +49,7 @@ const ContentPage = () => {
       
       // Update chapter content in the store
       const updatedChapters = course.chapters?.map(ch => 
-        ch.id === chapterId ? { ...ch, content: content } : ch
+        ch.id === chapterId ? { ...ch, content } : ch
       ) || [];
       
       updateCourse(course.id, { 
@@ -151,7 +151,7 @@ const ContentPage = () => {
                 <BookOpen className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
                 <p className="text-muted-foreground mb-4">No detailed content available for this chapter yet.</p>
                 <Button onClick={generateContent}>
-                  Generate Content
+                  Generate & View Content
                 </Button>
               </div>
             )}
