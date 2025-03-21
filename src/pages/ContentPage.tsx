@@ -37,6 +37,11 @@ const ContentPage = () => {
       navigate(`/classroom/course/${courseId}`);
       return;
     }
+
+    // Check if content needs to be generated
+    if (!chapter.content || chapter.content.length < 100) {
+      generateContent();
+    }
   }, [course, chapter, courseId, chapterId, navigate]);
   
   const generateContent = async () => {
@@ -147,12 +152,9 @@ const ContentPage = () => {
                 </ReactMarkdown>
               </div>
             ) : (
-              <div className="text-center py-12">
-                <BookOpen className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                <p className="text-muted-foreground mb-4">No detailed content available for this chapter yet.</p>
-                <Button onClick={generateContent}>
-                  Generate & View Content
-                </Button>
+              <div className="flex flex-col items-center justify-center py-12">
+                <div className="w-16 h-16 border-4 border-primary/30 border-t-primary rounded-full animate-spin mb-4"></div>
+                <p className="text-muted-foreground">Generating comprehensive content for this topic...</p>
               </div>
             )}
           </div>

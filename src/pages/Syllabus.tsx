@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -18,7 +19,6 @@ const Syllabus = () => {
   const [loading, setLoading] = useState(true);
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const { setSyllabus, addCourse, courses, updateCourse } = useStore();
-  const [generatingChapterId, setGeneratingChapterId] = useState<string | null>(null);
   
   useEffect(() => {
     const fetchSyllabus = async () => {
@@ -108,15 +108,11 @@ const Syllabus = () => {
       toast.success('Course added to your learning journey');
     }
     
+    // Always navigate to the first chapter
     if (chapters && chapters.length > 0) {
       const firstChapter = chapters[0];
-      if (!firstChapter.content || firstChapter.content.length < 100) {
-        await handleGenerateChapterContent(firstChapter);
-        return; // Navigation happens in handleGenerateChapterContent
-      }
+      navigate(`/classroom/${id}/content/${firstChapter.id}`);
     }
-    
-    navigate(`/classroom/course/${id}`);
   };
   
   const handlePlanLater = () => {
@@ -142,58 +138,25 @@ const Syllabus = () => {
     navigate('/dashboard');
   };
 
-  const handleGenerateChapterContent = async (chapter: Chapter) => {
-    try {
-      setGeneratingChapterId(chapter.id);
-      const detailedContent = await generateChapterContent(chapter.title, chapter.content || "");
-      
-      const updatedChapters = chapters.map(ch => 
-        ch.id === chapter.id ? { ...ch, content: detailedContent } : ch
-      );
-      
-      setChapters(updatedChapters);
-      
-      setSyllabus({
+  const handleViewChapterContent = (chapter: Chapter) => {
+    // Add the course if it doesn't exist
+    const existingCourse = courses.find(course => course.id === id);
+    if (!existingCourse) {
+      addCourse({
         id: id || '',
-        topic,
-        chapters: updatedChapters,
-        loading: false
+        title: topic,
+        description: `A comprehensive course about ${topic}.`,
+        status: 'ongoing',
+        progress: 0,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        chapters
       });
-      
-      toast.success(`Generated detailed content for "${chapter.title}"`);
-      
-      const existingCourse = courses.find(course => course.id === id);
-      if (!existingCourse) {
-        addCourse({
-          id: id || '',
-          title: topic,
-          description: `A comprehensive course about ${topic}.`,
-          status: 'ongoing',
-          progress: 0,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          chapters: updatedChapters
-        });
-      } else {
-        const updatedCourseChapters = existingCourse.chapters?.map(ch => 
-          ch.id === chapter.id ? { ...ch, content: detailedContent } : ch
-        );
-        
-        if (updatedCourseChapters) {
-          updateCourse(existingCourse.id, {
-            chapters: updatedCourseChapters,
-            updatedAt: new Date().toISOString()
-          });
-        }
-      }
-      
-      navigate(`/classroom/${id}/content/${chapter.id}`);
-    } catch (error) {
-      console.error('Error generating chapter content:', error);
-      toast.error('Failed to generate chapter content. Please try again.');
-    } finally {
-      setGeneratingChapterId(null);
     }
+    
+    // Navigate to the chapter content page directly
+    // Content generation will happen in the ContentPage component
+    navigate(`/classroom/${id}/content/${chapter.id}`);
   };
   
   return (
@@ -290,20 +253,10 @@ const Syllabus = () => {
                             size="sm" 
                             variant="outline"
                             className="self-start sm:self-center whitespace-nowrap"
-                            onClick={() => handleGenerateChapterContent(chapter)}
-                            disabled={generatingChapterId === chapter.id}
+                            onClick={() => handleViewChapterContent(chapter)}
                           >
-                            {generatingChapterId === chapter.id ? (
-                              <>
-                                <div className="w-4 h-4 mr-2 border-2 border-primary/30 border-t-primary rounded-full animate-spin"></div>
-                                <span>Generating...</span>
-                              </>
-                            ) : (
-                              <>
-                                <Play className="mr-2 h-4 w-4" />
-                                <span>Generate Content</span>
-                              </>
-                            )}
+                            <Play className="mr-2 h-4 w-4" />
+                            <span>View Full Content</span>
                           </Button>
                         </div>
                       </motion.div>
@@ -331,4 +284,3 @@ const Syllabus = () => {
 };
 
 export default Syllabus;
-
