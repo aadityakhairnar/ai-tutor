@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -33,7 +32,6 @@ const Syllabus = () => {
         setLoading(true);
         const syllabusData = await generateSyllabus(topic);
         
-        // Transform the syllabus data into the format we need
         const formattedChapters: Chapter[] = syllabusData.map((chapter: SyllabusChapter, index: number) => ({
           id: `${id}-${index + 1}`,
           title: chapter.title,
@@ -66,7 +64,6 @@ const Syllabus = () => {
       setLoading(true);
       const syllabusData = await generateSyllabus(topic);
       
-      // Transform the syllabus data into the format we need
       const formattedChapters: Chapter[] = syllabusData.map((chapter: SyllabusChapter, index: number) => ({
         id: `${id}-${index + 1}`,
         title: chapter.title,
@@ -103,7 +100,6 @@ const Syllabus = () => {
       chapters
     };
     
-    // Check if the course already exists
     const existingCourse = courses.find(course => course.id === id);
     if (existingCourse) {
       toast.info('You have already added this course');
@@ -127,7 +123,6 @@ const Syllabus = () => {
       chapters
     };
     
-    // Check if the course already exists
     const existingCourse = courses.find(course => course.id === id);
     if (existingCourse) {
       toast.info('You have already added this course');
@@ -144,14 +139,12 @@ const Syllabus = () => {
       setGeneratingChapterId(chapter.id);
       const detailedContent = await generateChapterContent(chapter.title, chapter.content);
       
-      // Update the chapters with the new detailed content
       const updatedChapters = chapters.map(ch => 
         ch.id === chapter.id ? { ...ch, content: detailedContent } : ch
       );
       
       setChapters(updatedChapters);
       
-      // Update the syllabus in the store
       setSyllabus({
         id: id || '',
         topic,
@@ -160,6 +153,22 @@ const Syllabus = () => {
       });
       
       toast.success(`Generated detailed content for "${chapter.title}"`);
+      
+      const existingCourse = courses.find(course => course.id === id);
+      if (!existingCourse) {
+        addCourse({
+          id: id || '',
+          title: topic,
+          description: `A comprehensive course about ${topic}.`,
+          status: 'ongoing',
+          progress: 0,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          chapters: updatedChapters
+        });
+      }
+      
+      navigate(`/classroom/${id}/content/${chapter.id}`);
     } catch (error) {
       console.error('Error generating chapter content:', error);
       toast.error('Failed to generate chapter content. Please try again.');

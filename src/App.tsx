@@ -9,6 +9,7 @@ import Dashboard from "./pages/Dashboard";
 import Classroom from "./pages/Classroom";
 import Syllabus from "./pages/Syllabus";
 import Course from "./pages/Course";
+import ContentPage from "./pages/ContentPage";
 import ReviseRoom from "./pages/ReviseRoom";
 import TestRoom from "./pages/TestRoom";
 import NotFound from "./pages/NotFound";
@@ -30,6 +31,7 @@ const App = () => (
               <Route path="/classroom" element={<Classroom />} />
               <Route path="/classroom/syllabus/:id" element={<Syllabus />} />
               <Route path="/classroom/course/:id" element={<Course />} />
+              <Route path="/classroom/:courseId/content/:chapterId" element={<ContentPage />} />
               <Route path="/reviseroom" element={<ReviseRoom />} />
               <Route path="/testroom" element={<TestRoom />} />
               <Route path="*" element={<NotFound />} />

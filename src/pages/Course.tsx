@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -11,12 +10,6 @@ import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import CourseMenu from '@/components/CourseMenu';
 import { generateChapterContent } from '@/services/contentGenerator';
-import ReactMarkdown from 'react-markdown';
-import remarkMath from 'remark-math';
-import rehypeKatex from 'rehype-katex';
-import rehypeHighlight from 'rehype-highlight';
-import 'katex/dist/katex.min.css';
-import 'highlight.js/styles/github-dark.css';
 
 const Course = () => {
   const { id } = useParams<{ id: string }>();
@@ -24,7 +17,6 @@ const Course = () => {
   const { courses, updateCourse, markChapterCompleted } = useStore();
   const [course, setCourse] = useState<CourseType | null>(null);
   const [selectedChapter, setSelectedChapter] = useState<string | null>(null);
-  const [chapterContent, setChapterContent] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingChapterId, setLoadingChapterId] = useState<string | null>(null);
   
@@ -48,26 +40,21 @@ const Course = () => {
     }
   }, [id, courses, navigate]);
   
-  useEffect(() => {
-    async function loadChapterContent() {
-      if (selectedChapter && course) {
-        const chapter = course.chapters?.find(c => c.id === selectedChapter);
-        if (chapter) {
-          // If content exists and is not just a placeholder, use it
-          if (chapter.content && chapter.content.length > 100) {
-            setChapterContent(chapter.content);
-          } else {
-            setChapterContent(chapter.content || "Click 'Start Learning' to generate detailed content for this chapter.");
-          }
+  const handleChapterClick = (chapterId: string) => {
+    setSelectedChapter(chapterId);
+    
+    // Navigate to content page if the course exists
+    if (course) {
+      const chapter = course.chapters?.find(ch => ch.id === chapterId);
+      if (chapter) {
+        // Check if chapter has content, if not, generate it first
+        if (!chapter.content || chapter.content.length < 100) {
+          handleStartLearning(chapterId);
+        } else {
+          navigate(`/classroom/${course.id}/content/${chapterId}`);
         }
       }
     }
-    
-    loadChapterContent();
-  }, [selectedChapter, course]);
-  
-  const handleChapterClick = (chapterId: string) => {
-    setSelectedChapter(chapterId);
   };
   
   const handleChapterCompletion = (chapterId: string, completed: boolean) => {
@@ -108,14 +95,12 @@ const Course = () => {
               chapters: updatedChapters,
               updatedAt: new Date().toISOString()
             });
-            
-            // Update selected chapter if this is the current one
-            if (chapterId === selectedChapter) {
-              setChapterContent(content);
-            }
           }
           
           toast.success('Chapter content generated successfully');
+          
+          // Navigate to the content page after generating content
+          navigate(`/classroom/${course.id}/content/${chapterId}`);
         } catch (error) {
           console.error("Failed to generate chapter content:", error);
           toast.error('Failed to generate content. Please try again.');
@@ -140,7 +125,7 @@ const Course = () => {
     );
   }
   
-  const selectedChapterContent = course.chapters?.find(chapter => chapter.id === selectedChapter);
+  const selectedChapterContent = course?.chapters?.find(chapter => chapter.id === selectedChapter);
   
   return (
     <PageTransition>
@@ -155,7 +140,7 @@ const Course = () => {
             <span>Back to Dashboard</span>
           </Button>
           
-          {course.chapters && (
+          {course?.chapters && (
             <CourseMenu 
               chapters={course.chapters} 
               activeChapterId={selectedChapter} 
@@ -167,15 +152,15 @@ const Course = () => {
         
         <div className="bg-card rounded-lg shadow-page overflow-hidden">
           <div className="p-6 sm:p-8">
-            <h1 className="text-2xl sm:text-3xl font-display mb-2">{course.title}</h1>
-            <p className="text-muted-foreground mb-4">{course.description}</p>
+            <h1 className="text-2xl sm:text-3xl font-display mb-2">{course?.title}</h1>
+            <p className="text-muted-foreground mb-4">{course?.description}</p>
             
             <div className="mb-6">
               <div className="flex justify-between text-sm mb-1">
                 <span>Progress</span>
-                <span>{course.progress}%</span>
+                <span>{course?.progress}%</span>
               </div>
-              <Progress value={course.progress} className="h-2" />
+              <Progress value={course?.progress} className="h-2" />
             </div>
             
             <Separator className="my-6" />
@@ -184,7 +169,7 @@ const Course = () => {
               <div className="col-span-1 order-2 lg:order-1 hidden lg:block">
                 <h3 className="text-lg font-medium mb-4">Course Content</h3>
                 <div className="space-y-2">
-                  {course.chapters?.map((chapter, index) => (
+                  {course?.chapters?.map((chapter, index) => (
                     <motion.div
                       key={chapter.id}
                       initial={{ opacity: 0, x: -10 }}
@@ -217,7 +202,10 @@ const Course = () => {
                             variant="outline" 
                             size="sm" 
                             className="ml-10 mt-2 w-auto"
-                            onClick={() => handleStartLearning(chapter.id)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleStartLearning(chapter.id);
+                            }}
                             disabled={isLoading && loadingChapterId === chapter.id}
                           >
                             {isLoading && loadingChapterId === chapter.id ? (
@@ -288,29 +276,23 @@ const Course = () => {
                       </div>
                     </div>
                     
-                    {isLoading && loadingChapterId === selectedChapterContent.id ? (
-                      <div className="flex flex-col items-center justify-center py-12">
-                        <div className="w-16 h-16 border-4 border-primary/30 border-t-primary rounded-full animate-spin mb-4"></div>
-                        <p className="text-muted-foreground">Generating comprehensive content for this topic...</p>
+                    <div className="prose prose-stone dark:prose-invert max-w-none">
+                      <div className="text-center py-6">
+                        <BookOpen className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                        <p className="text-muted-foreground mb-4">
+                          {selectedChapterContent.content && selectedChapterContent.content.length > 100 
+                            ? "This chapter has content ready to view."
+                            : "No detailed content available for this chapter yet."
+                          }
+                        </p>
+                        <Button 
+                          onClick={() => navigate(`/classroom/${course?.id}/content/${selectedChapterContent.id}`)}
+                          disabled={!selectedChapterContent.content || selectedChapterContent.content.length < 100}
+                        >
+                          View Full Content
+                        </Button>
                       </div>
-                    ) : (
-                      <div className="prose prose-stone dark:prose-invert max-w-none">
-                        {selectedChapterContent.content && selectedChapterContent.content.length > 100 ? (
-                          <ReactMarkdown
-                            remarkPlugins={[remarkMath]}
-                            rehypePlugins={[rehypeKatex, rehypeHighlight]}
-                          >
-                            {selectedChapterContent.content}
-                          </ReactMarkdown>
-                        ) : (
-                          <div className="text-center py-12">
-                            <BookOpen className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                            <p className="text-muted-foreground mb-4">No detailed content available for this chapter yet.</p>
-                            <p className="text-sm text-muted-foreground">Click the "Start Learning" button to generate comprehensive learning material.</p>
-                          </div>
-                        )}
-                      </div>
-                    )}
+                    </div>
                   </div>
                 ) : (
                   <div className="flex items-center justify-center h-64 bg-accent/30 rounded-md">
