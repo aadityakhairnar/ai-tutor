@@ -41,6 +41,15 @@ const ContentPage = () => {
       navigate(`/classroom/course/${courseId}`);
       return;
     }
+    
+    // Check if content exists and is substantial
+    const hasContent = chapter.content && chapter.content.length > 100;
+    if (hasContent) {
+      setContentDisplayed(true);
+    } else {
+      // Auto-generate content if it doesn't exist
+      generateContent();
+    }
   }, [course, chapter, courseId, chapterId, navigate]);
   
   const generateContent = async () => {
@@ -198,10 +207,11 @@ const ContentPage = () => {
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center py-12">
-                <p className="text-muted-foreground mb-4">No content has been generated for this chapter yet.</p>
+                <p className="text-muted-foreground mb-4">Generating content for this chapter...</p>
                 <Button 
                   onClick={generateContent}
                   className="mt-2"
+                  disabled={isLoading}
                 >
                   <BookOpen className="mr-2 h-4 w-4" />
                   Generate & View Content
