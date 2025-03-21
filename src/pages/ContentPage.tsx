@@ -40,11 +40,11 @@ const ContentPage = () => {
     
     // If the chapter has no content or minimal content, generate it
     if (!chapter.content || chapter.content.length < 100) {
-      generateChapterContent();
+      generateContent();
     }
   }, [course, chapter, courseId, navigate]);
   
-  const generateChapterContent = async () => {
+  const generateContent = async () => {
     if (!course || !chapter) return;
     
     setIsLoading(true);
@@ -156,7 +156,7 @@ const ContentPage = () => {
               <div className="text-center py-12">
                 <BookOpen className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
                 <p className="text-muted-foreground mb-4">No detailed content available for this chapter yet.</p>
-                <Button onClick={generateChapterContent}>
+                <Button onClick={generateContent}>
                   Generate Content
                 </Button>
               </div>
