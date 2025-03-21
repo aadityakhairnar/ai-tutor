@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, BookOpen, CheckCircle, Circle } from 'lucide-react';
@@ -36,11 +37,6 @@ const ContentPage = () => {
       navigate(`/classroom/course/${courseId}`);
       return;
     }
-    
-    // If the chapter has no content or minimal content, generate it
-    if (!chapter.content || chapter.content.length < 100) {
-      generateContent();
-    }
   }, [course, chapter, courseId, chapterId, navigate]);
   
   const generateContent = async () => {
@@ -48,12 +44,12 @@ const ContentPage = () => {
     
     setIsLoading(true);
     try {
-      // Fix the error by using the chapter title and content correctly
+      // Generate content using the chapter title and description
       const content = await generateChapterContent(chapter.title, chapter.content || "");
       
       // Update chapter content in the store
       const updatedChapters = course.chapters?.map(ch => 
-        ch.id === chapterId ? { ...ch, content } : ch
+        ch.id === chapterId ? { ...ch, content: content } : ch
       ) || [];
       
       updateCourse(course.id, { 

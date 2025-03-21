@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -31,19 +30,8 @@ const Course = () => {
         const firstIncomplete = foundCourse.chapters?.find(chapter => !chapter.completed);
         if (firstIncomplete) {
           setSelectedChapter(firstIncomplete.id);
-          
-          // Auto-generate content for first chapter if needed
-          if (!firstIncomplete.content || firstIncomplete.content.length < 100) {
-            handleStartLearning(firstIncomplete.id);
-          }
         } else if (foundCourse.chapters && foundCourse.chapters.length > 0) {
           setSelectedChapter(foundCourse.chapters[0].id);
-          
-          // Auto-generate content for first chapter if needed
-          const firstChapter = foundCourse.chapters[0];
-          if (!firstChapter.content || firstChapter.content.length < 100) {
-            handleStartLearning(firstChapter.id);
-          }
         }
       } else {
         toast.error('Course not found');
@@ -52,22 +40,9 @@ const Course = () => {
     }
   }, [id, courses, navigate]);
   
-  const handleChapterClick = async (chapterId: string) => {
+  const handleChapterClick = (chapterId: string) => {
     setSelectedChapter(chapterId);
-    
-    // Find chapter and check if content needs to be generated
-    if (course) {
-      const chapter = course.chapters?.find(ch => ch.id === chapterId);
-      if (chapter) {
-        // Always generate content if it doesn't exist or is too short
-        if (!chapter.content || chapter.content.length < 100) {
-          await handleStartLearning(chapterId);
-        } else {
-          // If content exists, navigate directly to content page
-          navigate(`/classroom/${course.id}/content/${chapterId}`);
-        }
-      }
-    }
+    // No longer navigate automatically to content page
   };
   
   const handleChapterCompletion = (chapterId: string, completed: boolean) => {
@@ -128,6 +103,21 @@ const Course = () => {
         } finally {
           setIsLoading(false);
           setLoadingChapterId(null);
+        }
+      }
+    }
+  };
+
+  const viewFullContent = (chapterId: string) => {
+    if (course) {
+      const chapter = course.chapters?.find(c => c.id === chapterId);
+      if (chapter) {
+        if (!chapter.content || chapter.content.length < 100) {
+          // Generate content if it doesn't exist
+          handleStartLearning(chapterId);
+        } else {
+          // Navigate directly if content exists
+          navigate(`/classroom/${course.id}/content/${chapterId}`);
         }
       }
     }
@@ -254,26 +244,6 @@ const Course = () => {
                     <div className="flex items-center justify-between mb-6">
                       <h2 className="text-xl font-medium">{selectedChapterContent.title}</h2>
                       <div className="flex items-center gap-2">
-                        {(!selectedChapterContent.content || selectedChapterContent.content.length < 100) && (
-                          <Button 
-                            variant="default" 
-                            size="sm"
-                            onClick={() => handleStartLearning(selectedChapterContent.id)}
-                            disabled={isLoading}
-                          >
-                            {isLoading && loadingChapterId === selectedChapterContent.id ? (
-                              <div className="flex items-center">
-                                <div className="animate-spin mr-2 h-4 w-4 border-2 border-background/30 border-t-background rounded-full"></div>
-                                <span>Generating...</span>
-                              </div>
-                            ) : (
-                              <>
-                                <Play className="mr-2 h-4 w-4" /> 
-                                <span>Start Learning</span>
-                              </>
-                            )}
-                          </Button>
-                        )}
                         <Button
                           variant="outline"
                           size="sm"
@@ -307,10 +277,12 @@ const Course = () => {
                           }
                         </p>
                         <Button 
-                          onClick={() => navigate(`/classroom/${course?.id}/content/${selectedChapterContent.id}`)}
-                          disabled={!selectedChapterContent.content || selectedChapterContent.content.length < 100}
+                          onClick={() => viewFullContent(selectedChapterContent.id)}
                         >
-                          View Full Content
+                          {selectedChapterContent.content && selectedChapterContent.content.length > 100
+                            ? "View Full Content"
+                            : "Generate & View Content"
+                          }
                         </Button>
                       </div>
                     </div>
