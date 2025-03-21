@@ -1,7 +1,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, BookOpen, CheckCircle, Circle } from 'lucide-react';
+import { ArrowLeft, BookOpen, CheckCircle, Circle, ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { useStore } from '@/store/useStore';
 import PageTransition from '@/components/PageTransition';
@@ -28,6 +28,13 @@ const ContentPage = () => {
   // Find the course and chapter
   const course = courses.find(c => c.id === courseId);
   const chapter = course?.chapters?.find(ch => ch.id === chapterId);
+  
+  // Find chapter index for navigation
+  const currentChapterIndex = course?.chapters?.findIndex(ch => ch.id === chapterId) ?? -1;
+  const previousChapter = currentChapterIndex > 0 ? course?.chapters?.[currentChapterIndex - 1] : null;
+  const nextChapter = currentChapterIndex >= 0 && currentChapterIndex < (course?.chapters?.length ?? 0) - 1 
+    ? course?.chapters?.[currentChapterIndex + 1] 
+    : null;
   
   useEffect(() => {
     if (!course) {
@@ -114,6 +121,10 @@ const ContentPage = () => {
     navigate(`/classroom/course/${courseId}`);
   };
   
+  const navigateToChapter = (targetChapterId: string) => {
+    navigate(`/classroom/${courseId}/content/${targetChapterId}`);
+  };
+  
   if (!course || !chapter) {
     return (
       <PageTransition>
@@ -161,6 +172,19 @@ const ContentPage = () => {
                     <span>Mark as Complete</span>
                   </>
                 )}
+              </Button>
+            </div>
+            
+            {/* Add Generate Content button */}
+            <div className="flex justify-end mb-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={generateContent}
+                disabled={isLoading}
+              >
+                <Sparkles className="mr-2 h-4 w-4" />
+                <span>Generate Content</span>
               </Button>
             </div>
             
@@ -218,6 +242,27 @@ const ContentPage = () => {
                 </Button>
               </div>
             )}
+            
+            {/* Add navigation buttons */}
+            <div className="flex justify-between mt-8">
+              <Button
+                variant="outline"
+                onClick={() => previousChapter && navigateToChapter(previousChapter.id)}
+                disabled={!previousChapter}
+              >
+                <ChevronLeft className="mr-2 h-4 w-4" />
+                <span>Previous Chapter</span>
+              </Button>
+              
+              <Button
+                variant="outline"
+                onClick={() => nextChapter && navigateToChapter(nextChapter.id)}
+                disabled={!nextChapter}
+              >
+                <span>Next Chapter</span>
+                <ChevronRight className="ml-2 h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </div>
       </div>
