@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { TestTube, Loader2, X, Clock, ChevronRight } from 'lucide-react';
+import { TestTube, Loader2, X, Clock, ChevronRight, ArrowLeft } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Course, Chapter } from '@/store/useStore';
@@ -89,7 +89,6 @@ const TestModal = ({ isOpen, onClose, course, selectedChapter, onChapterSelect, 
     try {
       const questionsData = await generateTestQuestions(chapter.title, chapter.content, 5);
       
-      // Format the returned questions
       const formattedQuestions = questionsData.map((q, index) => ({
         id: index + 1,
         question: q.question,
@@ -102,7 +101,7 @@ const TestModal = ({ isOpen, onClose, course, selectedChapter, onChapterSelect, 
         questions: formattedQuestions,
         selectedAnswers: Array(formattedQuestions.length).fill(null),
         currentQuestion: 0,
-        timeLeft: 5 * 60, // 5 minutes in seconds
+        timeLeft: 5 * 60,
         testStarted: false,
         testCompleted: false,
         score: 0
@@ -123,7 +122,6 @@ const TestModal = ({ isOpen, onClose, course, selectedChapter, onChapterSelect, 
       let allQuestions: Question[] = [];
       let index = 0;
       
-      // Process chapters sequentially to avoid overwhelming the API
       for (const chapter of course.chapters || []) {
         try {
           const chapterQuestions = await generateTestQuestions(chapter.title, chapter.content, 3);
@@ -146,7 +144,7 @@ const TestModal = ({ isOpen, onClose, course, selectedChapter, onChapterSelect, 
         questions: allQuestions,
         selectedAnswers: Array(allQuestions.length).fill(null),
         currentQuestion: 0,
-        timeLeft: 15 * 60, // 15 minutes in seconds
+        timeLeft: 15 * 60,
         testStarted: false,
         testCompleted: false,
         score: 0
