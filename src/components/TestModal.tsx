@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
-import { TestTube, Loader2, X, Clock, ChevronRight, ArrowLeft } from 'lucide-react';
+import { TestTube, Loader2, X, Clock, ChevronRight, ArrowLeft, Info } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Course, Chapter } from '@/store/useStore';
 import { Card, CardContent } from '@/components/ui/card';
-import { generateTestQuestions } from '@/services/contentGenerator';
+import { generateTestQuestions, getAnswerExplanation } from '@/services/contentGenerator';
 import { toast } from 'sonner';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Progress } from '@/components/ui/progress';
@@ -35,6 +35,7 @@ interface TestState {
   testStarted: boolean;
   testCompleted: boolean;
   score: number;
+  explanations: Record<number, string>;
 }
 
 const TestModal = ({ isOpen, onClose, course, selectedChapter, onChapterSelect, isGenerating }: TestModalProps) => {
@@ -46,10 +47,12 @@ const TestModal = ({ isOpen, onClose, course, selectedChapter, onChapterSelect, 
     timeLeft: 0,
     testStarted: false,
     testCompleted: false,
-    score: 0
+    score: 0,
+    explanations: {}
   });
   const [loading, setLoading] = useState(false);
   const [testTitle, setTestTitle] = useState('');
+  const [isLoadingExplanation, setIsLoadingExplanation] = useState<Record<number, boolean>>({});
 
   useEffect(() => {
     let timer: number;
@@ -104,7 +107,8 @@ const TestModal = ({ isOpen, onClose, course, selectedChapter, onChapterSelect, 
         timeLeft: 5 * 60,
         testStarted: false,
         testCompleted: false,
-        score: 0
+        score: 0,
+        explanations: {}
       });
       setView('preview');
       toast.success(`Generated ${formattedQuestions.length} questions for ${chapter.title}`);
@@ -147,7 +151,8 @@ const TestModal = ({ isOpen, onClose, course, selectedChapter, onChapterSelect, 
         timeLeft: 15 * 60,
         testStarted: false,
         testCompleted: false,
-        score: 0
+        score: 0,
+        explanations: {}
       });
       setView('preview');
       toast.success(`Generated ${allQuestions.length} questions for the entire course`);
@@ -217,6 +222,43 @@ const TestModal = ({ isOpen, onClose, course, selectedChapter, onChapterSelect, 
 
   const handleReturnToChapters = () => {
     setView('chapters');
+  };
+
+  const handleGetExplanation = async (questionId: number) => {
+    setIsLoadingExplanation(prev => ({ ...prev, [questionId]: true }));
+    
+    try {
+      const question = testState.questions.find(q => q.id === questionId);
+      
+      if (!question) {
+        throw new Error("Question not found");
+      }
+      
+      const userAnswerIndex = testState.selectedAnswers[questionId - 1];
+      const userAnswer = userAnswerIndex !== null ? question.options[userAnswerIndex] : "No answer selected";
+      const correctAnswer = question.options[question.correctAnswer];
+      
+      const explanation = await getAnswerExplanation(
+        question.question,
+        userAnswer,
+        correctAnswer
+      );
+      
+      setTestState(prev => ({
+        ...prev,
+        explanations: {
+          ...prev.explanations,
+          [questionId]: explanation
+        }
+      }));
+      
+      toast.success("Explanation loaded");
+    } catch (error) {
+      console.error("Failed to get explanation:", error);
+      toast.error("Failed to load explanation. Please try again.");
+    } finally {
+      setIsLoadingExplanation(prev => ({ ...prev, [questionId]: false }));
+    }
   };
 
   return (
@@ -403,6 +445,7 @@ const TestModal = ({ isOpen, onClose, course, selectedChapter, onChapterSelect, 
                     {testState.questions.map((question, index) => {
                       const isCorrect = testState.selectedAnswers[index] === question.correctAnswer;
                       const hasAnswered = testState.selectedAnswers[index] !== null;
+                      const hasExplanation = !!testState.explanations[question.id];
                       
                       return (
                         <div 
@@ -424,6 +467,30 @@ const TestModal = ({ isOpen, onClose, course, selectedChapter, onChapterSelect, 
                                     <span className="text-red-600">✗ Your answer: {question.options[testState.selectedAnswers[index]!]}</span>
                                     <br />
                                     <span className="text-green-600">Correct answer: {question.options[question.correctAnswer]}</span>
+                                    
+                                    {!isCorrect && (
+                                      <div className="mt-2">
+                                        {!hasExplanation ? (
+                                          <Button 
+                                            variant="outline" 
+                                            size="sm" 
+                                            onClick={() => handleGetExplanation(question.id)}
+                                            disabled={isLoadingExplanation[question.id]}
+                                          >
+                                            {isLoadingExplanation[question.id] ? (
+                                              <><Loader2 className="mr-2 h-3 w-3 animate-spin" /> Loading Explanation</>
+                                            ) : (
+                                              <><Info className="mr-2 h-3 w-3" /> Show Explanation</>
+                                            )}
+                                          </Button>
+                                        ) : (
+                                          <div className="mt-2 p-3 bg-blue-50 rounded-md border border-blue-200">
+                                            <p className="text-xs font-medium text-blue-800 mb-1">Explanation:</p>
+                                            <p className="text-sm text-blue-900">{testState.explanations[question.id]}</p>
+                                          </div>
+                                        )}
+                                      </div>
+                                    )}
                                   </>
                                 )}
                               </p>

@@ -257,3 +257,60 @@ export const generateTestQuestions = async (chapterTitle: string, chapterContent
     throw error;
   }
 };
+
+export const getAnswerExplanation = async (
+  question: string,
+  userAnswer: string,
+  correctAnswer: string
+): Promise<string> => {
+  const apiKey = getOpenAIKey();
+  
+  if (!apiKey) {
+    toast.error("OpenAI API key is not set. Please enter your API key in settings.");
+    throw new Error("OpenAI API key is not set");
+  }
+  
+  try {
+    const response = await fetch(API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        messages: [
+          {
+            role: "system",
+            content: "You are an expert educational assistant. Your task is to provide clear, concise explanations for test questions, helping students understand why their answer was incorrect and why the correct answer is right."
+          },
+          {
+            role: "user",
+            content: `I answered a test question incorrectly. Please explain why my answer was wrong and why the correct answer is right.
+            
+            Question: "${question}"
+            My answer: "${userAnswer}"
+            Correct answer: "${correctAnswer}"
+            
+            Provide a detailed but concise explanation that helps me understand the concept better.`
+          }
+        ],
+        temperature: 0.7,
+        max_tokens: 300
+      })
+    });
+    
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error?.message || "Failed to generate explanation");
+    }
+    
+    const data = await response.json();
+    return data.choices[0].message.content;
+    
+  } catch (error) {
+    console.error("Error generating answer explanation:", error);
+    toast.error("Failed to generate explanation. Please try again.");
+    throw error;
+  }
+};
