@@ -172,12 +172,13 @@ const DoubtsChat: React.FC<DoubtsChatProps> = ({ isOpen, onClose, context, selec
                   }`}
                 >
                   {message.role === 'assistant' ? (
-                    <ReactMarkdown
-                      className="prose dark:prose-invert prose-sm max-w-none"
-                      rehypePlugins={[rehypeHighlight]}
-                    >
-                      {message.content}
-                    </ReactMarkdown>
+                    <div className="prose dark:prose-invert prose-sm max-w-none">
+                      <ReactMarkdown
+                        rehypePlugins={[rehypeHighlight]}
+                      >
+                        {message.content}
+                      </ReactMarkdown>
+                    </div>
                   ) : (
                     <p className="whitespace-pre-wrap">{message.content}</p>
                   )}
