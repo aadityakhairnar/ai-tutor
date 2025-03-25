@@ -1,11 +1,40 @@
 
-import { BookOpen } from 'lucide-react';
+import { useState } from 'react';
+import { BookOpen, Clock, ChevronRight, GraduationCap } from 'lucide-react';
+import { useStore, Course, Chapter } from '@/store/useStore';
 import EmptyState from '@/components/EmptyState';
 import PageTransition from '@/components/PageTransition';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Progress } from '@/components/ui/progress';
+import FlashcardModal from '@/components/FlashcardModal';
 
 const ReviseRoom = () => {
+  const { courses } = useStore();
+  const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
+  const [selectedChapter, setSelectedChapter] = useState<Chapter | null>(null);
+  const [isFlashcardModalOpen, setIsFlashcardModalOpen] = useState(false);
+  const [isGeneratingFlashcards, setIsGeneratingFlashcards] = useState(false);
+
+  // Filter courses that are either completed or ongoing
+  const availableCourses = courses.filter(
+    course => course.status === 'completed' || course.status === 'ongoing'
+  );
+
+  const handleReviseNow = (course: Course) => {
+    setSelectedCourse(course);
+    setSelectedChapter(null);
+    setIsFlashcardModalOpen(true);
+  };
+
+  const handleChapterSelect = (chapter: Chapter) => {
+    setSelectedChapter(chapter);
+    setIsGeneratingFlashcards(true);
+    // This would normally trigger flashcard generation
+    setTimeout(() => setIsGeneratingFlashcards(false), 1000);
+  };
+
   return (
     <PageTransition>
       <div className="page-content">
@@ -14,17 +43,65 @@ const ReviseRoom = () => {
           Review and reinforce your knowledge with personalized revision materials.
         </p>
         
-        <EmptyState
-          icon={<BookOpen className="w-full h-full" />}
-          title="Coming Soon"
-          description="The Revise Room is under development. Visit the Classroom to start learning."
-          action={
-            <Link to="/classroom">
-              <Button>Go to Classroom</Button>
-            </Link>
-          }
-        />
+        {availableCourses.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {availableCourses.map(course => (
+              <Card key={course.id} className="flex flex-col">
+                <CardHeader>
+                  <CardTitle>{course.title}</CardTitle>
+                  <CardDescription className="line-clamp-2">{course.description}</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="mb-4">
+                    <div className="flex justify-between text-sm mb-1">
+                      <span>Progress</span>
+                      <span>{course.progress}%</span>
+                    </div>
+                    <Progress value={course.progress} className="h-2" />
+                  </div>
+                  
+                  <div className="flex items-center text-sm text-muted-foreground">
+                    <Clock className="w-4 h-4 mr-1" />
+                    <span>
+                      {course.chapters?.filter(ch => ch.completed).length || 0} of {course.chapters?.length || 0} chapters completed
+                    </span>
+                  </div>
+                </CardContent>
+                <CardFooter className="mt-auto pt-4">
+                  <Button 
+                    onClick={() => handleReviseNow(course)}
+                    className="w-full"
+                  >
+                    Revise Now <GraduationCap className="ml-2 h-4 w-4" />
+                  </Button>
+                </CardFooter>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <EmptyState
+            icon={<BookOpen className="w-full h-full" />}
+            title="No courses to revise"
+            description="Complete or start learning some courses to begin revision."
+            action={
+              <Link to="/classroom">
+                <Button>Go to Classroom</Button>
+              </Link>
+            }
+          />
+        )}
       </div>
+
+      {selectedCourse && (
+        <FlashcardModal
+          isOpen={isFlashcardModalOpen}
+          onClose={() => setIsFlashcardModalOpen(false)}
+          course={selectedCourse}
+          selectedChapter={selectedChapter}
+          onChapterSelect={handleChapterSelect}
+          isGenerating={isGeneratingFlashcards}
+        />
+      )}
     </PageTransition>
   );
 };

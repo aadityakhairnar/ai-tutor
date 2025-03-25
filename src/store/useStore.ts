@@ -1,4 +1,3 @@
-
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
@@ -22,6 +21,21 @@ export interface Chapter {
   completed: boolean;
 }
 
+export interface Flashcard {
+  id: string;
+  chapterId: string;
+  front: string;
+  back: string;
+}
+
+export interface TestQuestion {
+  id: string;
+  chapterId: string;
+  question: string;
+  options: string[];
+  correctAnswer: number;
+}
+
 interface StoreState {
   courses: Course[];
   activeCourse: Course | null;
@@ -31,6 +45,8 @@ interface StoreState {
     chapters: Chapter[];
     loading: boolean;
   } | null;
+  flashcards: Record<string, Flashcard[]>;
+  testQuestions: Record<string, TestQuestion[]>;
   addCourse: (course: Course) => void;
   updateCourse: (courseId: string, updates: Partial<Course>) => void;
   removeCourse: (courseId: string) => void;
@@ -42,9 +58,14 @@ interface StoreState {
   getChapterContent: (courseId: string, chapterId: string) => string;
   getNextChapter: (courseId: string, currentChapterId: string) => Chapter | null;
   getPreviousChapter: (courseId: string, currentChapterId: string) => Chapter | null;
+  addFlashcards: (courseId: string, chapterId: string, flashcards: Omit<Flashcard, 'id'>[]) => void;
+  getFlashcardsForChapter: (courseId: string, chapterId: string) => Flashcard[];
+  getFlashcardsForCourse: (courseId: string) => Flashcard[];
+  addTestQuestions: (courseId: string, chapterId: string, questions: Omit<TestQuestion, 'id'>[]) => void;
+  getTestQuestionsForChapter: (courseId: string, chapterId: string) => TestQuestion[];
+  getTestQuestionsForCourse: (courseId: string) => TestQuestion[];
 }
 
-// Create some sample courses for testing
 const sampleCourses: Course[] = [
   {
     id: '1',
@@ -98,6 +119,8 @@ export const useStore = create<StoreState>()(
       courses: sampleCourses,
       activeCourse: null,
       syllabus: null,
+      flashcards: {},
+      testQuestions: {},
       
       addCourse: (course) => set((state) => ({ 
         courses: [...state.courses, course] 
@@ -124,7 +147,6 @@ export const useStore = create<StoreState>()(
               chapter.id === chapterId ? { ...chapter, completed } : chapter
             );
             
-            // Calculate new progress
             const totalChapters = updatedChapters.length;
             const completedChapters = updatedChapters.filter(ch => ch.completed).length;
             const newProgress = totalChapters > 0 ? Math.round((completedChapters / totalChapters) * 100) : 0;
@@ -149,7 +171,7 @@ export const useStore = create<StoreState>()(
             : course
         )
       })),
-
+      
       updateChapterContent: (courseId, chapterId, content) => set((state) => {
         const updatedCourses = state.courses.map(course => {
           if (course.id === courseId && course.chapters) {
@@ -168,14 +190,14 @@ export const useStore = create<StoreState>()(
         
         return { courses: updatedCourses };
       }),
-
+      
       getChapterContent: (courseId, chapterId) => {
         const state = get();
         const course = state.courses.find(c => c.id === courseId);
         const chapter = course?.chapters?.find(ch => ch.id === chapterId);
         return chapter?.content || '';
       },
-
+      
       getNextChapter: (courseId, currentChapterId) => {
         const state = get();
         const course = state.courses.find(c => c.id === courseId);
@@ -187,7 +209,7 @@ export const useStore = create<StoreState>()(
         
         return course.chapters[currentIndex + 1];
       },
-
+      
       getPreviousChapter: (courseId, currentChapterId) => {
         const state = get();
         const course = state.courses.find(c => c.id === courseId);
@@ -199,12 +221,67 @@ export const useStore = create<StoreState>()(
         
         return course.chapters[currentIndex - 1];
       },
+      
+      addFlashcards: (courseId, chapterId, newFlashcards) => set((state) => {
+        const courseFlashcards = state.flashcards[courseId] || [];
+        const flashcardsWithIds = newFlashcards.map((card, index) => ({
+          ...card,
+          id: `${courseId}-${chapterId}-${Date.now()}-${index}`,
+          chapterId
+        }));
+        
+        return {
+          flashcards: {
+            ...state.flashcards,
+            [courseId]: [...courseFlashcards, ...flashcardsWithIds]
+          }
+        };
+      }),
+      
+      getFlashcardsForChapter: (courseId, chapterId) => {
+        const state = get();
+        const courseFlashcards = state.flashcards[courseId] || [];
+        return courseFlashcards.filter(card => card.chapterId === chapterId);
+      },
+      
+      getFlashcardsForCourse: (courseId) => {
+        const state = get();
+        return state.flashcards[courseId] || [];
+      },
+      
+      addTestQuestions: (courseId, chapterId, newQuestions) => set((state) => {
+        const courseQuestions = state.testQuestions[courseId] || [];
+        const questionsWithIds = newQuestions.map((question, index) => ({
+          ...question,
+          id: `${courseId}-${chapterId}-${Date.now()}-${index}`,
+          chapterId
+        }));
+        
+        return {
+          testQuestions: {
+            ...state.testQuestions,
+            [courseId]: [...courseQuestions, ...questionsWithIds]
+          }
+        };
+      }),
+      
+      getTestQuestionsForChapter: (courseId, chapterId) => {
+        const state = get();
+        const courseQuestions = state.testQuestions[courseId] || [];
+        return courseQuestions.filter(question => question.chapterId === chapterId);
+      },
+      
+      getTestQuestionsForCourse: (courseId) => {
+        const state = get();
+        return state.testQuestions[courseId] || [];
+      },
     }),
     {
       name: 'acampus-storage',
-      // Only persist the courses data
       partialize: (state) => ({ 
-        courses: state.courses 
+        courses: state.courses,
+        flashcards: state.flashcards,
+        testQuestions: state.testQuestions
       }),
     }
   )
