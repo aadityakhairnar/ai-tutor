@@ -20,7 +20,15 @@ import { Progress } from '@/components/ui/progress';
 const ContentPage = () => {
   const { courseId, chapterId } = useParams<{ courseId: string; chapterId: string }>();
   const navigate = useNavigate();
-  const { courses, updateCourse, markChapterCompleted } = useStore();
+  const { 
+    courses, 
+    updateCourse, 
+    markChapterCompleted, 
+    updateChapterContent,
+    getNextChapter,
+    getPreviousChapter
+  } = useStore();
+  
   const [isLoading, setIsLoading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [contentDisplayed, setContentDisplayed] = useState(false);
@@ -29,12 +37,9 @@ const ContentPage = () => {
   const course = courses.find(c => c.id === courseId);
   const chapter = course?.chapters?.find(ch => ch.id === chapterId);
   
-  // Find chapter index for navigation
-  const currentChapterIndex = course?.chapters?.findIndex(ch => ch.id === chapterId) ?? -1;
-  const previousChapter = currentChapterIndex > 0 ? course?.chapters?.[currentChapterIndex - 1] : null;
-  const nextChapter = currentChapterIndex >= 0 && currentChapterIndex < (course?.chapters?.length ?? 0) - 1 
-    ? course?.chapters?.[currentChapterIndex + 1] 
-    : null;
+  // Get previous and next chapters using store methods
+  const previousChapter = courseId && chapterId ? getPreviousChapter(courseId, chapterId) : null;
+  const nextChapter = courseId && chapterId ? getNextChapter(courseId, chapterId) : null;
   
   useEffect(() => {
     if (!course) {
@@ -60,7 +65,7 @@ const ContentPage = () => {
   }, [course, chapter, courseId, chapterId, navigate]);
   
   const generateContent = async () => {
-    if (!course || !chapter) return;
+    if (!course || !chapter || !courseId) return;
     
     setIsLoading(true);
     setProgress(0);
@@ -82,14 +87,7 @@ const ContentPage = () => {
       const content = await generateChapterContent(chapter.title, chapter.content || "");
       
       // Update chapter content in the store
-      const updatedChapters = course.chapters?.map(ch => 
-        ch.id === chapterId ? { ...ch, content } : ch
-      ) || [];
-      
-      updateCourse(course.id, { 
-        chapters: updatedChapters,
-        updatedAt: new Date().toISOString()
-      });
+      updateChapterContent(courseId, chapter.id, content);
       
       // Set progress to 100% and display content
       setProgress(100);
@@ -106,8 +104,8 @@ const ContentPage = () => {
   };
   
   const handleChapterCompletion = (completed: boolean) => {
-    if (course && chapter) {
-      markChapterCompleted(course.id, chapter.id, completed);
+    if (course && chapter && courseId) {
+      markChapterCompleted(courseId, chapter.id, completed);
       
       if (completed) {
         toast.success('Chapter marked as completed');

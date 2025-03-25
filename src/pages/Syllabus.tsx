@@ -108,7 +108,7 @@ const Syllabus = () => {
       toast.success('Course added to your learning journey');
     }
     
-    // Always navigate to the first chapter
+    // If chapters exist, navigate to the first chapter and generate content
     if (chapters && chapters.length > 0) {
       const firstChapter = chapters[0];
       navigate(`/classroom/${id}/content/${firstChapter.id}`);

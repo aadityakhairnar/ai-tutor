@@ -39,6 +39,9 @@ interface StoreState {
   markChapterCompleted: (courseId: string, chapterId: string, completed: boolean) => void;
   updateCourseStatus: (courseId: string, status: CourseStatus) => void;
   updateChapterContent: (courseId: string, chapterId: string, content: string) => void;
+  getChapterContent: (courseId: string, chapterId: string) => string;
+  getNextChapter: (courseId: string, currentChapterId: string) => Chapter | null;
+  getPreviousChapter: (courseId: string, currentChapterId: string) => Chapter | null;
 }
 
 // Create some sample courses for testing
@@ -91,7 +94,7 @@ const sampleCourses: Course[] = [
 
 export const useStore = create<StoreState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       courses: sampleCourses,
       activeCourse: null,
       syllabus: null,
@@ -165,9 +168,44 @@ export const useStore = create<StoreState>()(
         
         return { courses: updatedCourses };
       }),
+
+      getChapterContent: (courseId, chapterId) => {
+        const state = get();
+        const course = state.courses.find(c => c.id === courseId);
+        const chapter = course?.chapters?.find(ch => ch.id === chapterId);
+        return chapter?.content || '';
+      },
+
+      getNextChapter: (courseId, currentChapterId) => {
+        const state = get();
+        const course = state.courses.find(c => c.id === courseId);
+        
+        if (!course?.chapters?.length) return null;
+        
+        const currentIndex = course.chapters.findIndex(ch => ch.id === currentChapterId);
+        if (currentIndex < 0 || currentIndex >= course.chapters.length - 1) return null;
+        
+        return course.chapters[currentIndex + 1];
+      },
+
+      getPreviousChapter: (courseId, currentChapterId) => {
+        const state = get();
+        const course = state.courses.find(c => c.id === courseId);
+        
+        if (!course?.chapters?.length) return null;
+        
+        const currentIndex = course.chapters.findIndex(ch => ch.id === currentChapterId);
+        if (currentIndex <= 0) return null;
+        
+        return course.chapters[currentIndex - 1];
+      },
     }),
     {
       name: 'acampus-storage',
+      // Only persist the courses data
+      partialize: (state) => ({ 
+        courses: state.courses 
+      }),
     }
   )
 );

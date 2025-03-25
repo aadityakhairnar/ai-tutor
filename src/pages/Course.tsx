@@ -14,7 +14,13 @@ import { generateChapterContent } from '@/services/contentGenerator';
 const Course = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { courses, updateCourse, markChapterCompleted } = useStore();
+  const { 
+    courses, 
+    updateCourse, 
+    markChapterCompleted, 
+    updateChapterContent 
+  } = useStore();
+  
   const [course, setCourse] = useState<CourseType | null>(null);
   const [selectedChapter, setSelectedChapter] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -42,7 +48,6 @@ const Course = () => {
   
   const handleChapterClick = (chapterId: string) => {
     setSelectedChapter(chapterId);
-    // No longer navigate automatically to content page
   };
   
   const handleChapterCompletion = (chapterId: string, completed: boolean) => {
@@ -64,7 +69,7 @@ const Course = () => {
   };
   
   const handleStartLearning = async (chapterId: string) => {
-    if (course) {
+    if (course && id) {
       const chapter = course.chapters?.find(c => c.id === chapterId);
       if (chapter) {
         setLoadingChapterId(chapterId);
@@ -73,23 +78,12 @@ const Course = () => {
         try {
           const content = await generateChapterContent(chapter.title, chapter.content || "");
           
-          // Update chapter content in the store
-          const updatedChapters = course.chapters?.map(ch => 
-            ch.id === chapterId ? { ...ch, content } : ch
-          );
+          // Use the store method to update chapter content
+          updateChapterContent(id, chapterId, content);
           
-          if (updatedChapters) {
-            updateCourse(course.id, { 
-              chapters: updatedChapters,
-              updatedAt: new Date().toISOString()
-            });
-            
-            // Update the local course state
-            const updatedCourse = {
-              ...course,
-              chapters: updatedChapters,
-              updatedAt: new Date().toISOString()
-            };
+          // Update the local course state
+          const updatedCourse = courses.find(c => c.id === id);
+          if (updatedCourse) {
             setCourse(updatedCourse);
           }
           
