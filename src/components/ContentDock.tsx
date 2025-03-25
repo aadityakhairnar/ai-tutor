@@ -3,7 +3,6 @@ import React, { useState, useRef, useEffect } from 'react';
 import { HelpCircle, BookOpen, Highlighter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import CourseMenu from '@/components/CourseMenu';
 import { Chapter } from '@/store/useStore';
 
 interface ContentDockProps {
