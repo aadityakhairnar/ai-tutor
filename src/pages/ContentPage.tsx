@@ -1,4 +1,3 @@
-
 import { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, BookOpen, CheckCircle, Circle, ChevronLeft, ChevronRight, Sparkles, HelpCircle } from 'lucide-react';
@@ -38,11 +37,9 @@ const ContentPage = () => {
   const [selectedText, setSelectedText] = useState('');
   const contentRef = useRef<HTMLDivElement>(null);
   
-  // Find the course and chapter
   const course = courses.find(c => c.id === courseId);
   const chapter = course?.chapters?.find(ch => ch.id === chapterId);
   
-  // Get previous and next chapters using store methods
   const previousChapter = courseId && chapterId ? getPreviousChapter(courseId, chapterId) : null;
   const nextChapter = courseId && chapterId ? getNextChapter(courseId, chapterId) : null;
   
@@ -59,12 +56,10 @@ const ContentPage = () => {
       return;
     }
     
-    // Check if content exists and is substantial
     const hasContent = chapter.content && chapter.content.length > 100;
     if (hasContent) {
       setContentDisplayed(true);
     } else {
-      // Auto-generate content if it doesn't exist
       generateContent();
     }
   }, [course, chapter, courseId, chapterId, navigate]);
@@ -76,7 +71,6 @@ const ContentPage = () => {
     setProgress(0);
     setContentDisplayed(false);
     
-    // Simulate progress
     const progressInterval = setInterval(() => {
       setProgress(prev => {
         if (prev >= 90) {
@@ -88,13 +82,10 @@ const ContentPage = () => {
     }, 500);
     
     try {
-      // Generate content using the chapter title and description
       const content = await generateChapterContent(chapter.title, chapter.content || "");
       
-      // Update chapter content in the store
       updateChapterContent(courseId, chapter.id, content);
       
-      // Set progress to 100% and display content
       setProgress(100);
       setContentDisplayed(true);
       
@@ -188,7 +179,6 @@ const ContentPage = () => {
               </Button>
             </div>
             
-            {/* Add Generate Content button */}
             <div className="flex justify-end mb-4">
               <Button
                 variant="outline"
@@ -261,7 +251,6 @@ const ContentPage = () => {
               </div>
             )}
             
-            {/* Add navigation buttons */}
             <div className="flex justify-between mt-8">
               <Button
                 variant="outline"
@@ -284,7 +273,6 @@ const ContentPage = () => {
           </div>
         </div>
         
-        {/* Fixed Ask a Doubt button */}
         <Button
           variant="default"
           size="sm"
@@ -295,11 +283,10 @@ const ContentPage = () => {
           Ask a Doubt
         </Button>
         
-        {/* Doubt Chat Sidebar */}
         <DoubtsChat 
           isOpen={isChatOpen} 
           onClose={() => setIsChatOpen(false)} 
-          context={chapter.content} 
+          context={chapter?.content || ''} 
           selectedText={selectedText}
         />
       </div>

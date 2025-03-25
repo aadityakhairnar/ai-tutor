@@ -31,7 +31,7 @@ const DoubtsChat: React.FC<DoubtsChatProps> = ({ isOpen, onClose, context, selec
   const messageEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   
-  // Show initial context if selected text is present
+  // Reset messages when selectedText changes or sidebar is opened
   useEffect(() => {
     if (selectedText && isOpen) {
       setMessages([
