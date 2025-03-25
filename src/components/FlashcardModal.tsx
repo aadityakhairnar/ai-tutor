@@ -1,13 +1,11 @@
-
 import { useState } from 'react';
 import { BookOpen, Loader2, X, ArrowLeft, ArrowRight, RotateCw, ChevronRight } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Course, Chapter } from '@/store/useStore';
 import { Card, CardContent } from '@/components/ui/card';
-import { generateChapterContent } from '@/services/contentGenerator';
+import { generateFlashcards } from '@/services/contentGenerator';
 import { toast } from 'sonner';
-import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 interface FlashcardModalProps {
@@ -36,14 +34,21 @@ const FlashcardModal = ({ isOpen, onClose, course, selectedChapter, onChapterSel
     onChapterSelect(chapter);
     setLoading(true);
     try {
-      // In a real app, you would call an API to generate flashcards based on chapter content
-      // For this example, we'll create mock flashcards
-      const mockFlashcards = generateMockFlashcards(chapter.title);
-      setFlashcards(mockFlashcards);
+      const flashcardsData = await generateFlashcards(chapter.title, chapter.content);
+      
+      const formattedFlashcards = flashcardsData.map((card, index) => ({
+        id: index + 1,
+        front: card.front,
+        back: card.back
+      }));
+      
+      setFlashcards(formattedFlashcards);
       setCurrentFlashcard(0);
       setFlipped(false);
       setView('flashcards');
+      toast.success(`Generated ${formattedFlashcards.length} flashcards for ${chapter.title}`);
     } catch (error) {
+      console.error("Failed to generate flashcards:", error);
       toast.error('Failed to generate flashcards. Please try again.');
     } finally {
       setLoading(false);
@@ -53,17 +58,32 @@ const FlashcardModal = ({ isOpen, onClose, course, selectedChapter, onChapterSel
   const handleSelectEntireCourse = async () => {
     setLoading(true);
     try {
-      // In a real app, you would call an API to generate flashcards for the entire course
-      // For this example, we'll create mock flashcards
-      const allFlashcards = course.chapters?.flatMap((chapter, index) => 
-        generateMockFlashcards(chapter.title, index * 5)
-      ) || [];
+      let allFlashcards: Flashcard[] = [];
+      let index = 0;
+      
+      for (const chapter of course.chapters || []) {
+        try {
+          const chapterFlashcards = await generateFlashcards(chapter.title, chapter.content);
+          
+          const formattedFlashcards = chapterFlashcards.map((card) => ({
+            id: ++index,
+            front: card.front,
+            back: card.back
+          }));
+          
+          allFlashcards = [...allFlashcards, ...formattedFlashcards];
+        } catch (error) {
+          console.error(`Error generating flashcards for chapter ${chapter.title}:`, error);
+        }
+      }
       
       setFlashcards(allFlashcards);
       setCurrentFlashcard(0);
       setFlipped(false);
       setView('flashcards');
+      toast.success(`Generated ${allFlashcards.length} flashcards for the entire course`);
     } catch (error) {
+      console.error("Failed to generate flashcards for entire course:", error);
       toast.error('Failed to generate flashcards. Please try again.');
     } finally {
       setLoading(false);
@@ -90,37 +110,6 @@ const FlashcardModal = ({ isOpen, onClose, course, selectedChapter, onChapterSel
 
   const handleBackToChapters = () => {
     setView('chapters');
-  };
-
-  // Mock function to generate sample flashcards
-  const generateMockFlashcards = (chapterTitle: string, startId = 0): Flashcard[] => {
-    return [
-      { 
-        id: startId + 1, 
-        front: `What is ${chapterTitle}?`, 
-        back: `${chapterTitle} is a fundamental concept in this subject area.` 
-      },
-      { 
-        id: startId + 2, 
-        front: `Key components of ${chapterTitle}?`, 
-        back: `The key components include theoretical foundations and practical applications.` 
-      },
-      { 
-        id: startId + 3, 
-        front: `When was ${chapterTitle} first developed?`, 
-        back: `The concept was first developed in the early stages of this field.` 
-      },
-      { 
-        id: startId + 4, 
-        front: `Benefits of understanding ${chapterTitle}?`, 
-        back: `Understanding this concept helps in problem-solving and critical thinking.` 
-      },
-      { 
-        id: startId + 5, 
-        front: `How is ${chapterTitle} applied in real-world scenarios?`, 
-        back: `It's applied in various scenarios including technology, science, and business domains.` 
-      }
-    ];
   };
 
   return (

@@ -3,7 +3,8 @@ import { TestTube, Loader2, X, Clock, ChevronRight } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Course, Chapter } from '@/store/useStore';
-import { Card, CardContent, CardFooter } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
+import { generateTestQuestions } from '@/services/contentGenerator';
 import { toast } from 'sonner';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Progress } from '@/components/ui/progress';
@@ -19,14 +20,14 @@ interface TestModalProps {
   isGenerating: boolean;
 }
 
-type Question = {
+interface Question {
   id: number;
-  text: string;
+  question: string;
   options: string[];
   correctAnswer: number;
-};
+}
 
-type TestState = {
+interface TestState {
   questions: Question[];
   selectedAnswers: (number | null)[];
   currentQuestion: number;
@@ -34,10 +35,10 @@ type TestState = {
   testStarted: boolean;
   testCompleted: boolean;
   score: number;
-};
+}
 
 const TestModal = ({ isOpen, onClose, course, selectedChapter, onChapterSelect, isGenerating }: TestModalProps) => {
-  const [view, setView] = useState<'chapters' | 'test' | 'results'>('chapters');
+  const [view, setView] = useState<'chapters' | 'preview' | 'test' | 'results'>('chapters');
   const [testState, setTestState] = useState<TestState>({
     questions: [],
     selectedAnswers: [],
@@ -71,33 +72,46 @@ const TestModal = ({ isOpen, onClose, course, selectedChapter, onChapterSelect, 
       }, 1000);
     }
 
-    return () => clearInterval(timer);
+    return () => {
+      if (timer) clearInterval(timer);
+    };
   }, [testState.testStarted, testState.testCompleted, testState.timeLeft]);
 
   const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
-    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
   const handleSelectChapter = async (chapter: Chapter) => {
     onChapterSelect(chapter);
     setLoading(true);
     try {
-      const mockQuestions = generateMockQuestions(chapter.title, 5);
+      const questionsData = await generateTestQuestions(chapter.title, chapter.content, 5);
+      
+      // Format the returned questions
+      const formattedQuestions = questionsData.map((q, index) => ({
+        id: index + 1,
+        question: q.question,
+        options: q.options,
+        correctAnswer: q.correctAnswer
+      }));
+      
       setTestTitle(`${chapter.title} Test`);
       setTestState({
-        questions: mockQuestions,
-        selectedAnswers: Array(mockQuestions.length).fill(null),
+        questions: formattedQuestions,
+        selectedAnswers: Array(formattedQuestions.length).fill(null),
         currentQuestion: 0,
-        timeLeft: 5 * 60,
+        timeLeft: 5 * 60, // 5 minutes in seconds
         testStarted: false,
         testCompleted: false,
         score: 0
       });
-      setView('test');
+      setView('preview');
+      toast.success(`Generated ${formattedQuestions.length} questions for ${chapter.title}`);
     } catch (error) {
-      toast.error('Failed to generate test. Please try again.');
+      console.error("Failed to generate test questions:", error);
+      toast.error('Failed to generate test questions. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -107,24 +121,41 @@ const TestModal = ({ isOpen, onClose, course, selectedChapter, onChapterSelect, 
     setLoading(true);
     try {
       let allQuestions: Question[] = [];
-      course.chapters?.forEach((chapter, index) => {
-        const chapterQuestions = generateMockQuestions(chapter.title, 3, index * 3);
-        allQuestions = [...allQuestions, ...chapterQuestions];
-      });
+      let index = 0;
+      
+      // Process chapters sequentially to avoid overwhelming the API
+      for (const chapter of course.chapters || []) {
+        try {
+          const chapterQuestions = await generateTestQuestions(chapter.title, chapter.content, 3);
+          
+          const formattedQuestions = chapterQuestions.map((q) => ({
+            id: ++index,
+            question: q.question,
+            options: q.options,
+            correctAnswer: q.correctAnswer
+          }));
+          
+          allQuestions = [...allQuestions, ...formattedQuestions];
+        } catch (error) {
+          console.error(`Error generating questions for chapter ${chapter.title}:`, error);
+        }
+      }
       
       setTestTitle(`${course.title} Comprehensive Test`);
       setTestState({
         questions: allQuestions,
         selectedAnswers: Array(allQuestions.length).fill(null),
         currentQuestion: 0,
-        timeLeft: 15 * 60,
+        timeLeft: 15 * 60, // 15 minutes in seconds
         testStarted: false,
         testCompleted: false,
         score: 0
       });
-      setView('test');
+      setView('preview');
+      toast.success(`Generated ${allQuestions.length} questions for the entire course`);
     } catch (error) {
-      toast.error('Failed to generate test. Please try again.');
+      console.error("Failed to generate test for entire course:", error);
+      toast.error('Failed to generate test questions. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -135,15 +166,16 @@ const TestModal = ({ isOpen, onClose, course, selectedChapter, onChapterSelect, 
       ...prev,
       testStarted: true
     }));
+    setView('test');
   };
 
   const handleSelectAnswer = (questionIndex: number, answerIndex: number) => {
     setTestState(prev => {
-      const updatedAnswers = [...prev.selectedAnswers];
-      updatedAnswers[questionIndex] = answerIndex;
+      const newSelectedAnswers = [...prev.selectedAnswers];
+      newSelectedAnswers[questionIndex] = answerIndex;
       return {
         ...prev,
-        selectedAnswers: updatedAnswers
+        selectedAnswers: newSelectedAnswers
       };
     });
   };
@@ -181,42 +213,21 @@ const TestModal = ({ isOpen, onClose, course, selectedChapter, onChapterSelect, 
       testCompleted: true,
       score
     }));
-
+    
     setView('results');
   };
 
-  const handleBackToChapters = () => {
+  const handleReturnToChapters = () => {
     setView('chapters');
-  };
-
-  const generateMockQuestions = (chapterTitle: string, count: number, startId = 0): Question[] => {
-    const questions: Question[] = [];
-    for (let i = 0; i < count; i++) {
-      questions.push({
-        id: startId + i + 1,
-        text: `Question about ${chapterTitle}: What is the main concept discussed in part ${i + 1}?`,
-        options: [
-          `Option A related to ${chapterTitle}`,
-          `Option B related to ${chapterTitle}`,
-          `Option C related to ${chapterTitle}`,
-          `Option D related to ${chapterTitle}`
-        ],
-        correctAnswer: Math.floor(Math.random() * 4)
-      });
-    }
-    return questions;
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{view !== 'test' ? `${course.title} - Test` : testTitle}</DialogTitle>
+          <DialogTitle>{course.title} - Test</DialogTitle>
           <DialogDescription>
-            {view === 'chapters' && "Select a chapter to test or test your knowledge of the entire course"}
-            {view === 'test' && !testState.testStarted && "Review the instructions and start when you're ready"}
-            {view === 'test' && testState.testStarted && !testState.testCompleted && `Time remaining: ${formatTime(testState.timeLeft)}`}
-            {view === 'results' && `You scored ${testState.score}% on this test`}
+            Select a chapter to test your knowledge or test the entire course
           </DialogDescription>
         </DialogHeader>
 
@@ -241,7 +252,7 @@ const TestModal = ({ isOpen, onClose, course, selectedChapter, onChapterSelect, 
                   <TableRow>
                     <TableHead>Chapter</TableHead>
                     <TableHead className="w-[100px]">Status</TableHead>
-                    <TableHead className="w-[120px]">Action</TableHead>
+                    <TableHead className="w-[100px]">Action</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -258,9 +269,7 @@ const TestModal = ({ isOpen, onClose, course, selectedChapter, onChapterSelect, 
                         >
                           {loading && selectedChapter?.id === chapter.id ? 
                             <Loader2 className="h-4 w-4 animate-spin" /> : 
-                            <span className="flex items-center">
-                              5 min <ChevronRight className="ml-1 h-4 w-4" />
-                            </span>
+                            <ChevronRight className="h-4 w-4" />
                           }
                         </Button>
                       </TableCell>
@@ -272,94 +281,97 @@ const TestModal = ({ isOpen, onClose, course, selectedChapter, onChapterSelect, 
           </>
         )}
 
-        {view === 'test' && !testState.testStarted && (
+        {view === 'preview' && (
           <div className="space-y-4">
-            <div className="flex justify-between items-center">
-              <Button variant="outline" onClick={handleBackToChapters}>
-                Back to Chapters
-              </Button>
-            </div>
-            
+            <Button variant="outline" size="sm" onClick={handleReturnToChapters}>
+              <ArrowLeft className="mr-2 h-4 w-4" /> Back to Chapters
+            </Button>
+
             <Card>
               <CardContent className="pt-6">
-                <h3 className="text-lg font-medium mb-2">Test Instructions</h3>
-                <ul className="list-disc pl-5 space-y-1">
-                  <li>This test contains {testState.questions.length} multiple-choice questions</li>
-                  <li>You have {testState.timeLeft / 60} minutes to complete the test</li>
-                  <li>You can navigate between questions using the Next and Previous buttons</li>
-                  <li>You may change your answers at any time during the test</li>
-                  <li>The test will automatically end when the time is up</li>
-                  <li>Click 'Start Test' when you're ready to begin</li>
-                </ul>
+                <h2 className="text-xl font-semibold mb-4">{testTitle}</h2>
+                <div className="space-y-4">
+                  <div className="flex items-center">
+                    <Clock className="mr-2 h-4 w-4" />
+                    <span>Time Limit: {formatTime(testState.timeLeft)}</span>
+                  </div>
+                  <div>
+                    <span>Questions: {testState.questions.length}</span>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">
+                      You will have {formatTime(testState.timeLeft)} to complete {testState.questions.length} multiple-choice questions. 
+                      Your score will be displayed at the end of the test.
+                    </p>
+                  </div>
+                </div>
               </CardContent>
-              <CardFooter className="flex justify-end pt-4">
-                <Button onClick={handleStartTest}>
-                  Start Test <Clock className="ml-2 h-4 w-4" />
-                </Button>
-              </CardFooter>
+              <div className="p-6 pt-0 flex justify-end">
+                <Button onClick={handleStartTest}>Start Test</Button>
+              </div>
             </Card>
           </div>
         )}
 
-        {view === 'test' && testState.testStarted && !testState.testCompleted && (
+        {view === 'test' && (
           <div className="space-y-4">
             <div className="flex justify-between items-center">
-              <div className="text-sm">
-                Question {testState.currentQuestion + 1} of {testState.questions.length}
-              </div>
-              <div className="text-sm font-medium flex items-center">
-                <Clock className="h-4 w-4 mr-1" />
-                {formatTime(testState.timeLeft)}
+              <h2 className="text-xl font-semibold">{testTitle}</h2>
+              <div className="flex items-center">
+                <Clock className="mr-2 h-4 w-4" />
+                <span className={`font-medium ${testState.timeLeft < 60 ? 'text-red-500' : ''}`}>
+                  {formatTime(testState.timeLeft)}
+                </span>
               </div>
             </div>
-            
+
             <Progress 
-              value={(testState.currentQuestion / testState.questions.length) * 100} 
-              className="h-2 mb-4" 
+              value={(testState.currentQuestion + 1) / testState.questions.length * 100} 
+              className="h-2"
             />
-            
-            <Card>
+
+            <Card className="mt-4">
               <CardContent className="pt-6">
-                <h3 className="text-lg font-medium mb-4">
-                  {testState.questions[testState.currentQuestion]?.text}
-                </h3>
-                
-                <RadioGroup
-                  value={testState.selectedAnswers[testState.currentQuestion]?.toString() || ""}
-                  onValueChange={(value) => handleSelectAnswer(testState.currentQuestion, parseInt(value))}
-                  className="space-y-3"
-                >
-                  {testState.questions[testState.currentQuestion]?.options.map((option, idx) => (
-                    <div key={idx} className="flex items-center space-x-2">
-                      <RadioGroupItem value={idx.toString()} id={`option-${idx}`} />
-                      <Label htmlFor={`option-${idx}`}>{option}</Label>
-                    </div>
-                  ))}
-                </RadioGroup>
+                <div className="space-y-4">
+                  <h3 className="font-medium">
+                    Question {testState.currentQuestion + 1} of {testState.questions.length}
+                  </h3>
+                  <p className="text-lg">
+                    {testState.questions[testState.currentQuestion]?.question}
+                  </p>
+
+                  <RadioGroup
+                    value={testState.selectedAnswers[testState.currentQuestion]?.toString()}
+                    onValueChange={(value) => handleSelectAnswer(testState.currentQuestion, parseInt(value))}
+                    className="space-y-3"
+                  >
+                    {testState.questions[testState.currentQuestion]?.options.map((option, index) => (
+                      <div key={index} className="flex items-center space-x-2">
+                        <RadioGroupItem value={index.toString()} id={`option-${index}`} />
+                        <Label htmlFor={`option-${index}`}>{option}</Label>
+                      </div>
+                    ))}
+                  </RadioGroup>
+                </div>
               </CardContent>
             </Card>
-            
-            <div className="flex justify-between">
-              <Button 
-                variant="outline" 
+
+            <div className="flex justify-between mt-4">
+              <Button
+                variant="outline"
                 onClick={handlePreviousQuestion}
                 disabled={testState.currentQuestion === 0}
               >
                 Previous
               </Button>
               
-              {testState.currentQuestion < testState.questions.length - 1 ? (
-                <Button 
-                  onClick={handleNextQuestion}
-                >
-                  Next
+              {testState.currentQuestion === testState.questions.length - 1 ? (
+                <Button onClick={handleSubmitTest}>
+                  Submit Test
                 </Button>
               ) : (
-                <Button 
-                  onClick={handleSubmitTest}
-                  variant="default"
-                >
-                  Submit Test
+                <Button onClick={handleNextQuestion}>
+                  Next
                 </Button>
               )}
             </div>
@@ -367,54 +379,66 @@ const TestModal = ({ isOpen, onClose, course, selectedChapter, onChapterSelect, 
         )}
 
         {view === 'results' && (
-          <div className="space-y-4">
+          <div className="space-y-6">
+            <Button variant="outline" size="sm" onClick={handleReturnToChapters}>
+              <ArrowLeft className="mr-2 h-4 w-4" /> Back to Chapters
+            </Button>
+
             <Card>
               <CardContent className="pt-6">
-                <div className="text-center mb-4">
-                  <h3 className="text-2xl font-bold mb-2">Test Results</h3>
-                  <div className="text-5xl font-bold mb-2">{testState.score}%</div>
+                <h2 className="text-xl font-semibold mb-4">Test Results</h2>
+                
+                <div className="text-center py-4">
+                  <div className="text-5xl font-bold mb-2">
+                    {testState.score}%
+                  </div>
                   <p className="text-muted-foreground">
-                    {testState.score >= 70 
-                      ? "Great job! You have a good understanding of this material." 
-                      : "Keep studying! You're making progress but there's room for improvement."}
+                    {testState.score >= 80 ? 'Excellent work!' : 
+                     testState.score >= 60 ? 'Good job!' : 
+                     'Keep practicing!'}
                   </p>
                 </div>
                 
-                <div className="mt-6">
-                  <h4 className="font-medium mb-2">Question Summary</h4>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Question</TableHead>
-                        <TableHead>Your Answer</TableHead>
-                        <TableHead>Correct?</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {testState.questions.map((question, idx) => (
-                        <TableRow key={question.id}>
-                          <TableCell>{`Q${idx + 1}`}</TableCell>
-                          <TableCell>
-                            {testState.selectedAnswers[idx] !== null 
-                              ? `Option ${String.fromCharCode(65 + testState.selectedAnswers[idx]!)}` 
-                              : "Not answered"}
-                          </TableCell>
-                          <TableCell>
-                            {testState.selectedAnswers[idx] === question.correctAnswer 
-                              ? "✓" 
-                              : "✗"}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                <div className="space-y-4 mt-6">
+                  <h3 className="font-medium">Question Summary</h3>
+                  <div className="space-y-3">
+                    {testState.questions.map((question, index) => {
+                      const isCorrect = testState.selectedAnswers[index] === question.correctAnswer;
+                      const hasAnswered = testState.selectedAnswers[index] !== null;
+                      
+                      return (
+                        <div 
+                          key={question.id} 
+                          className={`p-3 rounded-md ${
+                            isCorrect ? 'bg-green-50 border border-green-200' : 
+                            hasAnswered ? 'bg-red-50 border border-red-200' : 
+                            'bg-gray-50 border border-gray-200'
+                          }`}
+                        >
+                          <p className="font-medium">{index + 1}. {question.question}</p>
+                          <div className="mt-2 text-sm">
+                            {hasAnswered ? (
+                              <p>
+                                {isCorrect ? (
+                                  <span className="text-green-600">✓ Correct: {question.options[question.correctAnswer]}</span>
+                                ) : (
+                                  <>
+                                    <span className="text-red-600">✗ Your answer: {question.options[testState.selectedAnswers[index]!]}</span>
+                                    <br />
+                                    <span className="text-green-600">Correct answer: {question.options[question.correctAnswer]}</span>
+                                  </>
+                                )}
+                              </p>
+                            ) : (
+                              <p className="text-amber-600">No answer selected</p>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               </CardContent>
-              <CardFooter className="flex justify-end pt-4">
-                <Button onClick={handleBackToChapters}>
-                  Back to Chapters
-                </Button>
-              </CardFooter>
             </Card>
           </div>
         )}
