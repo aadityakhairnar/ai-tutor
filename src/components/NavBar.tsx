@@ -1,15 +1,12 @@
 
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, Book, RefreshCw, PenLine } from 'lucide-react';
+import { Menu, X, Settings, Book, RefreshCw, PenLine } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import UserMenu from './UserMenu';
-import { useAuth } from '@clerk/clerk-react';
 
 const NavBar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
-  const { isSignedIn } = useAuth();
   
   const isActive = (path: string) => {
     return location.pathname === path;
@@ -19,6 +16,7 @@ const NavBar = () => {
     { name: 'Dashboard', path: '/dashboard', icon: Book },
     { name: 'Classroom', path: '/classroom', icon: PenLine },
     { name: 'Revise Room', path: '/reviseroom', icon: RefreshCw },
+    { name: 'Test Room', path: '/testroom', icon: Settings },
   ];
 
   return (
@@ -26,63 +24,45 @@ const NavBar = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center">
-            <Link to={isSignedIn ? "/dashboard" : "/"} className="flex items-center">
+            <Link to="/dashboard" className="flex items-center">
               <span className="font-display text-xl text-primary font-semibold">acampus<span className="text-accent-foreground">ai</span></span>
             </Link>
           </div>
           
-          {isSignedIn && (
-            <>
-              <div className="hidden md:block">
-                <div className="flex items-center space-x-4">
-                  {links.map((link) => (
-                    <Link
-                      key={link.name}
-                      to={link.path}
-                      className={`nav-link flex items-center ${isActive(link.path) ? 'active' : ''}`}
-                    >
-                      <link.icon className="w-4 h-4 mr-2" />
-                      {link.name}
-                    </Link>
-                  ))}
-                </div>
-              </div>
-              
-              <div className="flex items-center">
-                <UserMenu />
-                <div className="md:hidden ml-2">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setIsOpen(!isOpen)}
-                    aria-label="Toggle menu"
-                  >
-                    {isOpen ? (
-                      <X className="w-5 h-5" />
-                    ) : (
-                      <Menu className="w-5 h-5" />
-                    )}
-                  </Button>
-                </div>
-              </div>
-            </>
-          )}
-          
-          {!isSignedIn && (
-            <div className="flex gap-2">
-              <Link to="/sign-in">
-                <Button variant="ghost" size="sm">Sign In</Button>
-              </Link>
-              <Link to="/sign-up">
-                <Button size="sm">Sign Up</Button>
-              </Link>
+          <div className="hidden md:block">
+            <div className="flex items-center space-x-4">
+              {links.map((link) => (
+                <Link
+                  key={link.name}
+                  to={link.path}
+                  className={`nav-link flex items-center ${isActive(link.path) ? 'active' : ''}`}
+                >
+                  <link.icon className="w-4 h-4 mr-2" />
+                  {link.name}
+                </Link>
+              ))}
             </div>
-          )}
+          </div>
+          
+          <div className="md:hidden">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setIsOpen(!isOpen)}
+              aria-label="Toggle menu"
+            >
+              {isOpen ? (
+                <X className="w-5 h-5" />
+              ) : (
+                <Menu className="w-5 h-5" />
+              )}
+            </Button>
+          </div>
         </div>
       </div>
       
       {/* Mobile menu */}
-      {isOpen && isSignedIn && (
+      {isOpen && (
         <div className="md:hidden">
           <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 bg-card animate-fade-in">
             {links.map((link) => (
