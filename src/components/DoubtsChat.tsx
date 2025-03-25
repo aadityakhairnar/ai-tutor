@@ -3,7 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { ArrowUp, X, Sparkles } from 'lucide-react';
+import { ArrowUp, Sparkles } from 'lucide-react';
 import { getOpenAIKey } from '@/services/openai';
 import { toast } from 'sonner';
 import { Separator } from '@/components/ui/separator';
@@ -11,6 +11,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import ReactMarkdown from 'react-markdown';
 import rehypeHighlight from 'rehype-highlight';
 import 'highlight.js/styles/github-dark.css';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -151,9 +152,6 @@ const DoubtsChat: React.FC<DoubtsChatProps> = ({ isOpen, onClose, context, selec
               <Sparkles className="w-5 h-5 mr-2 text-primary" />
               Topic Assistant
             </SheetTitle>
-            <Button variant="ghost" size="icon" onClick={onClose}>
-              <X className="w-4 h-4" />
-            </Button>
           </div>
         </SheetHeader>
         
@@ -185,6 +183,19 @@ const DoubtsChat: React.FC<DoubtsChatProps> = ({ isOpen, onClose, context, selec
                 </div>
               </div>
             ))}
+            
+            {isLoading && (
+              <div className="flex justify-start">
+                <div className="max-w-[85%] rounded-lg px-4 py-2 bg-muted">
+                  <div className="space-y-2">
+                    <Skeleton className="h-4 w-[250px]" />
+                    <Skeleton className="h-4 w-[200px]" />
+                    <Skeleton className="h-4 w-[150px]" />
+                  </div>
+                </div>
+              </div>
+            )}
+            
             <div ref={messageEndRef} />
           </div>
         </ScrollArea>
