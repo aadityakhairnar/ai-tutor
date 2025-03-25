@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { HelpCircle, BookOpen, Highlighter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -28,6 +28,28 @@ const ContentDock: React.FC<ContentDockProps> = ({
   isHighlighterActive
 }) => {
   const [showMenu, setShowMenu] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+
+  // Effect to handle clicks outside the menu
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        showMenu && 
+        menuRef.current && 
+        !menuRef.current.contains(event.target as Node) &&
+        buttonRef.current && 
+        !buttonRef.current.contains(event.target as Node)
+      ) {
+        setShowMenu(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showMenu]);
 
   return (
     <div className="fixed left-4 bottom-4 z-20 flex flex-col gap-2 items-center">
@@ -52,6 +74,7 @@ const ContentDock: React.FC<ContentDockProps> = ({
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
+                ref={buttonRef}
                 variant="ghost"
                 size="icon"
                 className="rounded-full hover:bg-primary/10"
@@ -84,7 +107,10 @@ const ContentDock: React.FC<ContentDockProps> = ({
       </div>
 
       {showMenu && (
-        <div className="absolute bottom-16 left-0 bg-card rounded-lg shadow-lg border border-border animate-in fade-in slide-in-from-left-5 w-64">
+        <div 
+          ref={menuRef}
+          className="absolute bottom-16 left-0 bg-card rounded-lg shadow-lg border border-border animate-in fade-in slide-in-from-left-5 w-64"
+        >
           <div className="p-3 border-b">
             <h3 className="font-medium">{courseTitle}</h3>
             <p className="text-xs text-muted-foreground">Course content</p>
