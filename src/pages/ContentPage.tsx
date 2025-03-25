@@ -1,7 +1,7 @@
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, BookOpen, CheckCircle, Circle, ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
+import { ArrowLeft, BookOpen, CheckCircle, Circle, ChevronLeft, ChevronRight, Sparkles, HelpCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { useStore } from '@/store/useStore';
 import PageTransition from '@/components/PageTransition';
@@ -16,6 +16,8 @@ import 'katex/dist/katex.min.css';
 import 'highlight.js/styles/github-dark.css';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
+import DoubtsChat from '@/components/DoubtsChat';
+import SelectionQuote from '@/components/SelectionQuote';
 
 const ContentPage = () => {
   const { courseId, chapterId } = useParams<{ courseId: string; chapterId: string }>();
@@ -32,6 +34,9 @@ const ContentPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [contentDisplayed, setContentDisplayed] = useState(false);
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [selectedText, setSelectedText] = useState('');
+  const contentRef = useRef<HTMLDivElement>(null);
   
   // Find the course and chapter
   const course = courses.find(c => c.id === courseId);
@@ -123,6 +128,16 @@ const ContentPage = () => {
     navigate(`/classroom/${courseId}/content/${targetChapterId}`);
   };
   
+  const openChat = () => {
+    setSelectedText('');
+    setIsChatOpen(true);
+  };
+  
+  const handleTextSelection = (text: string) => {
+    setSelectedText(text);
+    setIsChatOpen(true);
+  };
+  
   if (!course || !chapter) {
     return (
       <PageTransition>
@@ -208,13 +223,18 @@ const ContentPage = () => {
                 </div>
               </div>
             ) : hasContent && contentDisplayed ? (
-              <div className="prose prose-stone dark:prose-invert max-w-none">
+              <div ref={contentRef} className="prose prose-stone dark:prose-invert max-w-none relative">
                 <ReactMarkdown
                   remarkPlugins={[remarkMath]}
                   rehypePlugins={[rehypeKatex, rehypeHighlight]}
                 >
                   {chapter.content}
                 </ReactMarkdown>
+                
+                <SelectionQuote 
+                  containerRef={contentRef} 
+                  onQuoteSelected={handleTextSelection} 
+                />
               </div>
             ) : hasContent && !contentDisplayed ? (
               <div className="flex flex-col items-center justify-center py-12">
@@ -263,6 +283,25 @@ const ContentPage = () => {
             </div>
           </div>
         </div>
+        
+        {/* Fixed Ask a Doubt button */}
+        <Button
+          variant="default"
+          size="sm"
+          className="fixed left-4 bottom-4 z-10 shadow-lg rounded-full px-4"
+          onClick={openChat}
+        >
+          <HelpCircle className="mr-2 h-4 w-4" />
+          Ask a Doubt
+        </Button>
+        
+        {/* Doubt Chat Sidebar */}
+        <DoubtsChat 
+          isOpen={isChatOpen} 
+          onClose={() => setIsChatOpen(false)} 
+          context={chapter.content} 
+          selectedText={selectedText}
+        />
       </div>
     </PageTransition>
   );
