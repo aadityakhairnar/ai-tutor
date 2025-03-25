@@ -1,6 +1,6 @@
 
 import { useState } from 'react';
-import { BookOpen, Loader2, X, ArrowLeft, ArrowRight, RotateCw } from 'lucide-react';
+import { BookOpen, Loader2, X, ArrowLeft, ArrowRight, RotateCw, ChevronRight } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Course, Chapter } from '@/store/useStore';

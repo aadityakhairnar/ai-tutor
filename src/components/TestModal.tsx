@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { TestTube, Loader2, X, Clock, ChevronRight } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -8,7 +7,6 @@ import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Progress } from '@/components/ui/progress';
-import { radioGroupActions } from '@radix-ui/react-radio-group';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 
@@ -52,7 +50,6 @@ const TestModal = ({ isOpen, onClose, course, selectedChapter, onChapterSelect, 
   const [loading, setLoading] = useState(false);
   const [testTitle, setTestTitle] = useState('');
 
-  // Timer effect
   useEffect(() => {
     let timer: number;
     if (testState.testStarted && !testState.testCompleted && testState.timeLeft > 0) {
@@ -60,7 +57,6 @@ const TestModal = ({ isOpen, onClose, course, selectedChapter, onChapterSelect, 
         setTestState(prev => {
           if (prev.timeLeft <= 1) {
             clearInterval(timer);
-            // End test when time is up
             return {
               ...prev,
               testCompleted: true,
@@ -88,15 +84,13 @@ const TestModal = ({ isOpen, onClose, course, selectedChapter, onChapterSelect, 
     onChapterSelect(chapter);
     setLoading(true);
     try {
-      // In a real app, you would call an API to generate test questions based on chapter content
-      // For this example, we'll create mock questions
       const mockQuestions = generateMockQuestions(chapter.title, 5);
       setTestTitle(`${chapter.title} Test`);
       setTestState({
         questions: mockQuestions,
         selectedAnswers: Array(mockQuestions.length).fill(null),
         currentQuestion: 0,
-        timeLeft: 5 * 60, // 5 minutes in seconds
+        timeLeft: 5 * 60,
         testStarted: false,
         testCompleted: false,
         score: 0
@@ -112,8 +106,6 @@ const TestModal = ({ isOpen, onClose, course, selectedChapter, onChapterSelect, 
   const handleSelectEntireCourse = async () => {
     setLoading(true);
     try {
-      // In a real app, you would call an API to generate test questions for the entire course
-      // For this example, we'll create mock questions
       let allQuestions: Question[] = [];
       course.chapters?.forEach((chapter, index) => {
         const chapterQuestions = generateMockQuestions(chapter.title, 3, index * 3);
@@ -125,7 +117,7 @@ const TestModal = ({ isOpen, onClose, course, selectedChapter, onChapterSelect, 
         questions: allQuestions,
         selectedAnswers: Array(allQuestions.length).fill(null),
         currentQuestion: 0,
-        timeLeft: 15 * 60, // 15 minutes in seconds
+        timeLeft: 15 * 60,
         testStarted: false,
         testCompleted: false,
         score: 0
@@ -175,7 +167,6 @@ const TestModal = ({ isOpen, onClose, course, selectedChapter, onChapterSelect, 
   };
 
   const handleSubmitTest = () => {
-    // Calculate score
     let correctAnswers = 0;
     testState.questions.forEach((question, index) => {
       if (testState.selectedAnswers[index] === question.correctAnswer) {
@@ -198,7 +189,6 @@ const TestModal = ({ isOpen, onClose, course, selectedChapter, onChapterSelect, 
     setView('chapters');
   };
 
-  // Mock function to generate sample questions
   const generateMockQuestions = (chapterTitle: string, count: number, startId = 0): Question[] => {
     const questions: Question[] = [];
     for (let i = 0; i < count; i++) {
@@ -211,7 +201,7 @@ const TestModal = ({ isOpen, onClose, course, selectedChapter, onChapterSelect, 
           `Option C related to ${chapterTitle}`,
           `Option D related to ${chapterTitle}`
         ],
-        correctAnswer: Math.floor(Math.random() * 4) // Random correct answer
+        correctAnswer: Math.floor(Math.random() * 4)
       });
     }
     return questions;
