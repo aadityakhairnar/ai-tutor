@@ -1,6 +1,7 @@
+
 import { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, BookOpen, CheckCircle, Circle, ChevronLeft, ChevronRight, Sparkles, HelpCircle } from 'lucide-react';
+import { ArrowLeft, BookOpen, CheckCircle, Circle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { useStore } from '@/store/useStore';
 import PageTransition from '@/components/PageTransition';
@@ -17,6 +18,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
 import DoubtsChat from '@/components/DoubtsChat';
 import SelectionQuote from '@/components/SelectionQuote';
+import ContentDock from '@/components/ContentDock';
+import Highlighter from '@/components/Highlighter';
 
 const ContentPage = () => {
   const { courseId, chapterId } = useParams<{ courseId: string; chapterId: string }>();
@@ -35,6 +38,7 @@ const ContentPage = () => {
   const [contentDisplayed, setContentDisplayed] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [selectedText, setSelectedText] = useState('');
+  const [isHighlighterActive, setIsHighlighterActive] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
   
   const course = courses.find(c => c.id === courseId);
@@ -128,6 +132,16 @@ const ContentPage = () => {
     setSelectedText(text);
     setIsChatOpen(true);
   };
+
+  const toggleHighlighter = () => {
+    setIsHighlighterActive(!isHighlighterActive);
+    
+    if (!isHighlighterActive) {
+      toast.info('Highlighter mode enabled. Select text to highlight it.');
+    } else {
+      toast.info('Highlighter mode disabled. Select text to ask doubts.');
+    }
+  };
   
   if (!course || !chapter) {
     return (
@@ -186,7 +200,7 @@ const ContentPage = () => {
                 onClick={generateContent}
                 disabled={isLoading}
               >
-                <Sparkles className="mr-2 h-4 w-4" />
+                <BookOpen className="mr-2 h-4 w-4" />
                 <span>Generate Content</span>
               </Button>
             </div>
@@ -223,7 +237,13 @@ const ContentPage = () => {
                 
                 <SelectionQuote 
                   containerRef={contentRef} 
-                  onQuoteSelected={handleTextSelection} 
+                  onQuoteSelected={handleTextSelection}
+                  disabled={isHighlighterActive}
+                />
+                
+                <Highlighter
+                  containerRef={contentRef}
+                  isActive={isHighlighterActive}
                 />
               </div>
             ) : hasContent && !contentDisplayed ? (
@@ -273,15 +293,16 @@ const ContentPage = () => {
           </div>
         </div>
         
-        <Button
-          variant="default"
-          size="sm"
-          className="fixed left-4 bottom-4 z-10 shadow-lg rounded-full px-4"
-          onClick={openChat}
-        >
-          <HelpCircle className="mr-2 h-4 w-4" />
-          Ask a Doubt
-        </Button>
+        <ContentDock
+          onOpenChat={openChat}
+          onOpenSyllabus={() => {}}
+          courseTitle={course.title}
+          chapters={course.chapters}
+          activeChapterId={chapter.id}
+          onSelectChapter={navigateToChapter}
+          toggleHighlighter={toggleHighlighter}
+          isHighlighterActive={isHighlighterActive}
+        />
         
         <DoubtsChat 
           isOpen={isChatOpen} 
