@@ -1,21 +1,19 @@
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "./ui/button";
+import { useToast } from "@/hooks/use-toast";
 
 const CreateTestUser = () => {
   const [creating, setCreating] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
 
   const createTestUser = async () => {
     setCreating(true);
-    setMessage(null);
-    setError(null);
 
     try {
-      // Create a test user
-      const testEmail = "test@example.com";
+      // Use a more robust email format
+      const testEmail = "test_user@example.com";
       const testPassword = "Test12345!";
 
       const { data, error: signupError } = await supabase.auth.signUp({
@@ -25,14 +23,25 @@ const CreateTestUser = () => {
 
       if (signupError) {
         console.error("Error creating test user:", signupError.message);
-        setError(`Failed to create test user: ${signupError.message}`);
+        toast({
+          title: "Error",
+          description: `Failed to create test user: ${signupError.message}`,
+          variant: "destructive"
+        });
       } else if (data.user) {
         console.log("Test user created successfully", data.user);
-        setMessage(`Test user created successfully! Email: ${testEmail}, Password: ${testPassword}`);
+        toast({
+          title: "Success",
+          description: `Test user created successfully! Email: ${testEmail}`
+        });
       }
     } catch (err) {
       console.error("Unexpected error:", err);
-      setError("An unexpected error occurred");
+      toast({
+        title: "Unexpected Error",
+        description: "An unexpected error occurred while creating the test user",
+        variant: "destructive"
+      });
     } finally {
       setCreating(false);
     }
@@ -50,9 +59,6 @@ const CreateTestUser = () => {
       >
         {creating ? "Creating..." : "Create Test User"}
       </Button>
-      
-      {message && <p className="mt-2 text-xs text-green-600">{message}</p>}
-      {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
     </div>
   );
 };
