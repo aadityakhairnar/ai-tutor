@@ -4,7 +4,7 @@ import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowLeft, CheckCircle, ClipboardList, RefreshCw, CalendarDays, BookOpen, Play } from 'lucide-react';
 import { toast } from 'sonner';
-import { Chapter } from '@/store/useStore';
+import { Chapter, useStore } from '@/store/useStore';
 import { useCourseData } from '@/hooks/useCourseData';
 import { generateSyllabus, SyllabusChapter } from '@/services/openai';
 import { generateChapterContent } from '@/services/contentGenerator';

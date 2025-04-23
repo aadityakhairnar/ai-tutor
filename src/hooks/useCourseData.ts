@@ -24,7 +24,7 @@ type DbChapter = {
 };
 
 // Transform database course to app course
-const mapDbCourseToAppCourse = (dbCourse: DbCourse & { chapters?: DbChapter[] }): Course => {
+const mapDbCourseToAppCourse = (dbCourse: DbCourse, dbChapters?: DbChapter[]): Course => {
   return {
     id: dbCourse.id,
     title: dbCourse.title,
@@ -33,7 +33,7 @@ const mapDbCourseToAppCourse = (dbCourse: DbCourse & { chapters?: DbChapter[] })
     progress: dbCourse.progress || 0,
     createdAt: dbCourse.created_at || new Date().toISOString(),
     updatedAt: dbCourse.updated_at || new Date().toISOString(),
-    chapters: dbCourse.chapters?.map(chapter => ({
+    chapters: dbChapters?.map(chapter => ({
       id: chapter.id,
       title: chapter.title,
       completed: chapter.completed || false,
@@ -61,27 +61,28 @@ export const useCourseData = () => {
   const { data: courses = [], isLoading } = useQuery({
     queryKey: ['courses'],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // First, fetch all courses
+      const { data: coursesData, error: coursesError } = await supabase
         .from('courses')
-        .select(`
-          id,
-          title,
-          description,
-          status,
-          progress,
-          created_at,
-          updated_at,
-          chapters (
-            id,
-            title,
-            completed,
-            position
-          )
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      return (data || []).map(mapDbCourseToAppCourse);
+      if (coursesError) throw coursesError;
+
+      // Then, fetch all chapters for these courses
+      const courseIds = coursesData.map(course => course.id);
+      const { data: chaptersData, error: chaptersError } = await supabase
+        .from('chapters')
+        .select('*')
+        .in('course_id', courseIds);
+
+      if (chaptersError) throw chaptersError;
+
+      // Map chapters to their respective courses
+      return coursesData.map((course): Course => {
+        const courseChapters = chaptersData.filter(chapter => chapter.course_id === course.id);
+        return mapDbCourseToAppCourse(course, courseChapters);
+      });
     },
   });
 
@@ -204,7 +205,6 @@ export const useCourseData = () => {
 
   const updateChapterContent = async (courseId: string, chapterId: string, content: string) => {
     // Since we're not storing content in the database, we can update it in the local state if needed
-    // This is essentially a no-op with our current implementation
     console.log('Chapter content updated (not stored in DB):', { courseId, chapterId, contentLength: content.length });
   };
 
