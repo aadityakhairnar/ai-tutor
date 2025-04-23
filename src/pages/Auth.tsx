@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import AuthFields from "@/components/AuthFields";
 import AuthError from "@/components/AuthError";
+import CreateTestUser from "@/components/CreateTestUser";
 
 const AuthPage = () => {
   const [loading, setLoading] = useState(false);
@@ -29,9 +30,12 @@ const AuthPage = () => {
     setLoading(true);
     setError(null);
 
+    // For debugging
+    console.log(`Attempting to ${variant} with email: ${email.trim()}`);
+
     try {
       if (variant === "login") {
-        const { error } = await supabase.auth.signInWithPassword({ 
+        const { data, error } = await supabase.auth.signInWithPassword({ 
           email: email.trim(), 
           password 
         });
@@ -39,7 +43,8 @@ const AuthPage = () => {
         if (error) {
           console.error("Login error:", error.message);
           setError(error.message);
-        } else {
+        } else if (data.user) {
+          console.log("Login successful:", data.user.id);
           toast({
             title: "Welcome back!",
             description: "You've successfully logged in."
@@ -47,7 +52,8 @@ const AuthPage = () => {
           navigate("/dashboard", { replace: true });
         }
       } else {
-        const { error: signupError } = await supabase.auth.signUp({ 
+        // For signup flow
+        const { data: signupData, error: signupError } = await supabase.auth.signUp({ 
           email: email.trim(), 
           password,
           options: {
@@ -61,16 +67,20 @@ const AuthPage = () => {
         if (signupError) {
           console.error("Signup error:", signupError.message);
           setError(signupError.message);
-        } else {
+        } else if (signupData.user) {
+          console.log("Signup successful:", signupData.user.id);
+          
           // Auto login after signup
-          const { error: loginError } = await supabase.auth.signInWithPassword({ 
+          const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({ 
             email: email.trim(), 
             password 
           });
           
           if (loginError) {
+            console.error("Auto-login error:", loginError.message);
             setError("Signup complete, but auto-login failed. Please log in manually.");
-          } else {
+          } else if (loginData.user) {
+            console.log("Auto-login successful after signup");
             toast({
               title: "Account created!",
               description: "You've successfully signed up and logged in."
@@ -141,9 +151,11 @@ const AuthPage = () => {
         
         <div className="mt-4 pt-4 border-t text-xs text-center text-muted-foreground">
           <p>Test credentials:</p>
-          <p>Email: user@testapp.com</p>
-          <p>Password: UserTest456!</p>
+          <p>Email: test@example.com</p>
+          <p>Password: Test12345!</p>
         </div>
+        
+        <CreateTestUser />
       </div>
     </div>
   );

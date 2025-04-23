@@ -7,9 +7,11 @@ const AuthLoader = () => {
   const setSession = useStore(s => s.setSession);
 
   useEffect(() => {
-    // Listen for session changes (set up *before* getting session)
+    console.log("AuthLoader: Initializing auth state");
+    
+    // Listen for auth state changes (set up *before* getting session)
     const { data } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log("Auth state changed:", event, session ? "User logged in" : "No session");
+      console.log(`Auth state changed: ${event}`, session ? "User logged in" : "No session");
       setSession(session);
     });
     
@@ -19,7 +21,9 @@ const AuthLoader = () => {
       setSession(data.session || null);
     });
     
+    // Clean up subscription on unmount
     return () => {
+      console.log("AuthLoader: Cleaning up auth subscription");
       data.subscription.unsubscribe();
     };
   }, [setSession]);
