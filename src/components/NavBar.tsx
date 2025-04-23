@@ -1,12 +1,16 @@
 
 import { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, Settings, Book, RefreshCw, PenLine } from 'lucide-react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Menu, X, Settings, Book, RefreshCw, PenLine, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 
 const NavBar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user } = useAuth();
   
   const isActive = (path: string) => {
     return location.pathname === path;
@@ -18,6 +22,11 @@ const NavBar = () => {
     { name: 'Revise Room', path: '/reviseroom', icon: RefreshCw },
     { name: 'Test Room', path: '/testroom', icon: Settings },
   ];
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate('/auth');
+  };
 
   return (
     <nav className="bg-card border-b border-border sticky top-0 z-50 backdrop-blur-sm bg-opacity-80">
@@ -31,16 +40,33 @@ const NavBar = () => {
           
           <div className="hidden md:block">
             <div className="flex items-center space-x-4">
-              {links.map((link) => (
-                <Link
-                  key={link.name}
-                  to={link.path}
-                  className={`nav-link flex items-center ${isActive(link.path) ? 'active' : ''}`}
-                >
-                  <link.icon className="w-4 h-4 mr-2" />
-                  {link.name}
+              {user ? (
+                <>
+                  {links.map((link) => (
+                    <Link
+                      key={link.name}
+                      to={link.path}
+                      className={`nav-link flex items-center ${isActive(link.path) ? 'active' : ''}`}
+                    >
+                      <link.icon className="w-4 h-4 mr-2" />
+                      {link.name}
+                    </Link>
+                  ))}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleLogout}
+                    className="flex items-center"
+                  >
+                    <LogOut className="w-4 h-4 mr-2" />
+                    Logout
+                  </Button>
+                </>
+              ) : (
+                <Link to="/auth">
+                  <Button>Login</Button>
                 </Link>
-              ))}
+              )}
             </div>
           </div>
           
@@ -65,21 +91,43 @@ const NavBar = () => {
       {isOpen && (
         <div className="md:hidden">
           <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 bg-card animate-fade-in">
-            {links.map((link) => (
+            {user ? (
+              <>
+                {links.map((link) => (
+                  <Link
+                    key={link.name}
+                    to={link.path}
+                    className={`block px-3 py-2 rounded-md text-base font-medium ${
+                      isActive(link.path)
+                        ? 'bg-primary/10 text-primary'
+                        : 'text-foreground hover:bg-accent hover:text-accent-foreground'
+                    } flex items-center`}
+                    onClick={() => setIsOpen(false)}
+                  >
+                    <link.icon className="w-4 h-4 mr-2" />
+                    {link.name}
+                  </Link>
+                ))}
+                <button
+                  className="w-full text-left px-3 py-2 rounded-md text-base font-medium text-foreground hover:bg-accent hover:text-accent-foreground flex items-center"
+                  onClick={() => {
+                    handleLogout();
+                    setIsOpen(false);
+                  }}
+                >
+                  <LogOut className="w-4 h-4 mr-2" />
+                  Logout
+                </button>
+              </>
+            ) : (
               <Link
-                key={link.name}
-                to={link.path}
-                className={`block px-3 py-2 rounded-md text-base font-medium ${
-                  isActive(link.path)
-                    ? 'bg-primary/10 text-primary'
-                    : 'text-foreground hover:bg-accent hover:text-accent-foreground'
-                } flex items-center`}
+                to="/auth"
+                className="block px-3 py-2 rounded-md text-base font-medium text-foreground hover:bg-accent hover:text-accent-foreground"
                 onClick={() => setIsOpen(false)}
               >
-                <link.icon className="w-4 h-4 mr-2" />
-                {link.name}
+                Login
               </Link>
-            ))}
+            )}
           </div>
         </div>
       )}
