@@ -1,7 +1,7 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Course, Chapter, CourseStatus } from '@/store/useStore';
+import { generateChapterContent } from '@/services/contentGenerator';
 
 // Define types that match exactly with the database schema
 type DbCourse = {
@@ -21,6 +21,7 @@ type DbChapter = {
   completed: boolean | null;
   position: number;
   course_id: string;
+  content: string | null;
 };
 
 // Transform database course to app course
@@ -37,7 +38,8 @@ const mapDbCourseToAppCourse = (dbCourse: DbCourse, dbChapters?: DbChapter[]): C
       id: chapter.id,
       title: chapter.title,
       completed: chapter.completed || false,
-      position: chapter.position
+      position: chapter.position,
+      content: chapter.content || undefined
     })) || []
   };
 };
@@ -203,9 +205,50 @@ export const useCourseData = () => {
     }
   };
 
-  const updateChapterContent = async (courseId: string, chapterId: string, content: string) => {
-    // Since we're not storing content in the database, we can update it in the local state if needed
-    console.log('Chapter content updated (not stored in DB):', { courseId, chapterId, contentLength: content.length });
+  const updateChapterContent = useMutation({
+    mutationFn: async ({ courseId, chapterId, content }: { 
+      courseId: string, 
+      chapterId: string, 
+      content: string 
+    }) => {
+      const { error } = await supabase
+        .from('chapters')
+        .update({ content })
+        .eq('id', chapterId)
+        .eq('course_id', courseId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      // Invalidate the courses query to refresh data
+      queryClient.invalidateQueries({ queryKey: ['courses'] });
+    }
+  });
+
+  const generateAndStoreChapterContent = async (
+    courseId: string, 
+    chapterId: string, 
+    chapterTitle: string
+  ) => {
+    try {
+      // Generate content using existing content generator
+      const generatedContent = await generateChapterContent(
+        chapterTitle, 
+        '' // Passing empty description as we don't have it
+      );
+
+      // Store the generated content
+      await updateChapterContent.mutateAsync({
+        courseId, 
+        chapterId, 
+        content: generatedContent
+      });
+
+      return generatedContent;
+    } catch (error) {
+      console.error('Failed to generate chapter content:', error);
+      throw error;
+    }
   };
 
   return {
@@ -215,7 +258,7 @@ export const useCourseData = () => {
     updateCourse,
     updateChapter,
     markChapterCompleted,
-    updateChapterContent,
+    updateChapterContent: generateAndStoreChapterContent,
     getNextChapter,
     getPreviousChapter
   };

@@ -12,6 +12,7 @@ export type Database = {
       chapters: {
         Row: {
           completed: boolean | null
+          content: string | null
           course_id: string
           created_at: string | null
           id: string
@@ -21,6 +22,7 @@ export type Database = {
         }
         Insert: {
           completed?: boolean | null
+          content?: string | null
           course_id: string
           created_at?: string | null
           id?: string
@@ -30,6 +32,7 @@ export type Database = {
         }
         Update: {
           completed?: boolean | null
+          content?: string | null
           course_id?: string
           created_at?: string | null
           id?: string
