@@ -67,56 +67,13 @@ interface StoreState {
 }
 
 const sampleCourses: Course[] = [
-  {
-    id: '1',
-    title: 'Introduction to Machine Learning',
-    description: 'Learn the fundamentals of machine learning algorithms and applications.',
-    status: 'completed',
-    progress: 100,
-    createdAt: '2023-05-15T10:00:00Z',
-    updatedAt: '2023-06-20T14:30:00Z',
-    chapters: [
-      { id: '1-1', title: 'What is Machine Learning?', content: 'Introduction to the field...', completed: true },
-      { id: '1-2', title: 'Supervised Learning', content: 'Classification and regression...', completed: true },
-      { id: '1-3', title: 'Unsupervised Learning', content: 'Clustering and dimensionality reduction...', completed: true },
-    ]
-  },
-  {
-    id: '2',
-    title: 'Web Development with React',
-    description: 'Master modern web development using React and its ecosystem.',
-    status: 'ongoing',
-    progress: 65,
-    createdAt: '2023-07-10T09:15:00Z',
-    updatedAt: '2023-08-05T16:45:00Z',
-    chapters: [
-      { id: '2-1', title: 'React Fundamentals', content: 'Components, props, and state...', completed: true },
-      { id: '2-2', title: 'Hooks and State Management', content: 'useState, useEffect, and Context API...', completed: true },
-      { id: '2-3', title: 'Routing and Navigation', content: 'React Router implementation...', completed: false },
-      { id: '2-4', title: 'Advanced Patterns', content: 'Render props, HOCs, and more...', completed: false },
-    ]
-  },
-  {
-    id: '3',
-    title: 'Data Structures and Algorithms',
-    description: 'Comprehensive guide to common data structures and algorithms.',
-    status: 'planned',
-    progress: 0,
-    createdAt: '2023-08-20T11:30:00Z',
-    updatedAt: '2023-08-20T11:30:00Z',
-    chapters: [
-      { id: '3-1', title: 'Arrays and Strings', content: 'Basic operations and manipulations...', completed: false },
-      { id: '3-2', title: 'Linked Lists', content: 'Singly and doubly linked lists...', completed: false },
-      { id: '3-3', title: 'Trees and Graphs', content: 'Binary trees, BSTs, and graph algorithms...', completed: false },
-      { id: '3-4', title: 'Sorting and Searching', content: 'Efficient algorithms for organizing data...', completed: false },
-    ]
-  }
+  // Removed placeholder courses
 ];
 
 export const useStore = create<StoreState>()(
   persist(
     (set, get) => ({
-      courses: sampleCourses,
+      courses: [],
       activeCourse: null,
       syllabus: null,
       flashcards: {},
