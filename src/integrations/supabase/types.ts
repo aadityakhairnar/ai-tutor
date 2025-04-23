@@ -9,6 +9,77 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      chapters: {
+        Row: {
+          completed: boolean | null
+          course_id: string
+          created_at: string | null
+          id: string
+          position: number
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          completed?: boolean | null
+          course_id: string
+          created_at?: string | null
+          id?: string
+          position: number
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          completed?: boolean | null
+          course_id?: string
+          created_at?: string | null
+          id?: string
+          position?: number
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chapters_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      courses: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          progress: number | null
+          status: string
+          title: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          progress?: number | null
+          status?: string
+          title: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          progress?: number | null
+          status?: string
+          title?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       done_courses: {
         Row: {
           completed_at: string

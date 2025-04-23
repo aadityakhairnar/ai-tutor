@@ -1,9 +1,9 @@
-
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { BookOpen, ChevronRight, GraduationCap, PenLine, TestTube } from 'lucide-react';
-import { useStore, CourseStatus } from '@/store/useStore';
+import { CourseStatus } from '@/store/useStore';
+import { useCourseData } from '@/hooks/useCourseData';
 import CourseCard from '@/components/CourseCard';
 import CourseFilters from '@/components/CourseFilters';
 import EmptyState from '@/components/EmptyState';
@@ -12,21 +12,15 @@ import ApiKeyForm from '@/components/ApiKeyForm';
 import { Button } from '@/components/ui/button';
 
 const Dashboard = () => {
-  const { courses, updateCourseStatus } = useStore();
+  const { courses, isLoading, updateCourse } = useCourseData();
   const [filter, setFilter] = useState<CourseStatus | 'all'>('all');
   
   const filteredCourses = filter === 'all' 
     ? courses 
     : courses.filter(course => course.status === filter);
   
-  const coursesByStatus = {
-    ongoing: courses.filter(course => course.status === 'ongoing'),
-    completed: courses.filter(course => course.status === 'completed'),
-    planned: courses.filter(course => course.status === 'planned')
-  };
-  
   const handleStatusChange = (courseId: string, status: CourseStatus) => {
-    updateCourseStatus(courseId, status);
+    updateCourse.mutate({ id: courseId, status });
   };
   
   const contentVariants = {
@@ -132,7 +126,11 @@ const Dashboard = () => {
             </div>
           </div>
           
-          {filteredCourses.length > 0 ? (
+          {isLoading ? (
+            <div className="flex items-center justify-center h-64">
+              <div className="w-8 h-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin"></div>
+            </div>
+          ) : filteredCourses.length > 0 ? (
             <motion.div 
               className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
               variants={contentVariants}
