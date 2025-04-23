@@ -24,6 +24,13 @@ export interface Chapter {
   completed: boolean
 }
 
+interface SyllabusData {
+  id: string
+  topic: string
+  chapters: Chapter[]
+  loading: boolean
+}
+
 interface StoreState {
   courses: Course[]
   loading: boolean
@@ -32,6 +39,14 @@ interface StoreState {
   setSession: (session: Session | null) => void
   markCourseAsDone: (courseId: string) => Promise<void>
   removeCourse: (courseId: string) => void
+  // Add missing functions
+  updateCourse: (courseId: string, updates: Partial<Course>) => void
+  markChapterCompleted: (courseId: string, chapterId: string, completed: boolean) => void
+  updateChapterContent: (courseId: string, chapterId: string, content: string) => void
+  getNextChapter: (courseId: string, currentChapterId: string) => Chapter | null
+  getPreviousChapter: (courseId: string, currentChapterId: string) => Chapter | null
+  setSyllabus: (data: SyllabusData) => void
+  addCourse: (course: Course) => void
 }
 
 export const useStore = create<StoreState>()(
@@ -63,7 +78,7 @@ export const useStore = create<StoreState>()(
             id: done.course_id,
             title: `Course #${done.course_id}`,
             description: 'Course description for demo.',
-            status: 'completed',
+            status: 'completed' as CourseStatus,
             progress: 100,
             createdAt: done.completed_at,
             updatedAt: done.completed_at,
@@ -85,6 +100,80 @@ export const useStore = create<StoreState>()(
           courses: state.courses.filter((course) => course.id !== courseId),
         }))
       },
+      // Implement missing functions
+      updateCourse: (courseId: string, updates: Partial<Course>) => {
+        set((state) => ({
+          courses: state.courses.map(course =>
+            course.id === courseId ? { ...course, ...updates } : course
+          ),
+        }))
+      },
+      markChapterCompleted: (courseId: string, chapterId: string, completed: boolean) => {
+        set((state) => ({
+          courses: state.courses.map(course => {
+            if (course.id === courseId) {
+              return {
+                ...course,
+                chapters: course.chapters?.map(chapter => 
+                  chapter.id === chapterId ? { ...chapter, completed } : chapter
+                ),
+                progress: completed 
+                  ? calculateProgress([...(course.chapters || []).map(ch => 
+                      ch.id === chapterId ? { ...ch, completed: true } : ch
+                    )])
+                  : calculateProgress([...(course.chapters || []).map(ch => 
+                      ch.id === chapterId ? { ...ch, completed: false } : ch
+                    )])
+              }
+            }
+            return course
+          })
+        }))
+      },
+      updateChapterContent: (courseId: string, chapterId: string, content: string) => {
+        set((state) => ({
+          courses: state.courses.map(course => {
+            if (course.id === courseId) {
+              return {
+                ...course,
+                chapters: course.chapters?.map(chapter => 
+                  chapter.id === chapterId ? { ...chapter, content } : chapter
+                )
+              }
+            }
+            return course
+          })
+        }))
+      },
+      getNextChapter: (courseId: string, currentChapterId: string) => {
+        const { courses } = get()
+        const course = courses.find(c => c.id === courseId)
+        if (!course || !course.chapters) return null
+        
+        const currentIndex = course.chapters.findIndex(ch => ch.id === currentChapterId)
+        if (currentIndex === -1 || currentIndex >= course.chapters.length - 1) return null
+        
+        return course.chapters[currentIndex + 1]
+      },
+      getPreviousChapter: (courseId: string, currentChapterId: string) => {
+        const { courses } = get()
+        const course = courses.find(c => c.id === courseId)
+        if (!course || !course.chapters) return null
+        
+        const currentIndex = course.chapters.findIndex(ch => ch.id === currentChapterId)
+        if (currentIndex <= 0) return null
+        
+        return course.chapters[currentIndex - 1]
+      },
+      setSyllabus: (data: SyllabusData) => {
+        // This function doesn't modify state directly,
+        // but would be used when generating a syllabus
+      },
+      addCourse: (course: Course) => {
+        set((state) => ({
+          courses: [...state.courses, course]
+        }))
+      }
     }),
     {
       name: 'acampus-storage-v2', // Updated to a new version
@@ -95,3 +184,10 @@ export const useStore = create<StoreState>()(
     }
   )
 )
+
+// Helper function to calculate course progress
+function calculateProgress(chapters: Chapter[]): number {
+  if (!chapters || chapters.length === 0) return 0
+  const completedChapters = chapters.filter(ch => ch.completed).length
+  return Math.round((completedChapters / chapters.length) * 100)
+}

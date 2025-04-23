@@ -24,14 +24,14 @@ function AuthLoader() {
   const setSession = useStore(s => s.setSession);
   useEffect(() => {
     // Listen for session changes (set up *before* getting session)
-    const { subscription } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
     });
     // Get current session
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session || null)
     });
-    return () => subscription.unsubscribe();
+    return () => subscription?.unsubscribe();
   }, [setSession]);
   return null;
 }
