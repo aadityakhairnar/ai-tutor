@@ -1,8 +1,7 @@
 
 import { useState } from 'react';
 import { TestTube, Clock, ChevronRight } from 'lucide-react';
-import { Chapter } from '@/store/useStore';
-import { useCourseData } from '@/hooks/useCourseData';
+import { useStore, Course, Chapter } from '@/store/useStore';
 import EmptyState from '@/components/EmptyState';
 import PageTransition from '@/components/PageTransition';
 import { Button } from '@/components/ui/button';
@@ -12,8 +11,8 @@ import { Progress } from '@/components/ui/progress';
 import TestModal from '@/components/TestModal';
 
 const TestRoom = () => {
-  const { courses } = useCourseData();
-  const [selectedCourse, setSelectedCourse] = useState(null);
+  const { courses } = useStore();
+  const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
   const [selectedChapter, setSelectedChapter] = useState<Chapter | null>(null);
   const [isTestModalOpen, setIsTestModalOpen] = useState(false);
   const [isGeneratingTest, setIsGeneratingTest] = useState(false);
@@ -23,7 +22,7 @@ const TestRoom = () => {
     course => course.status === 'completed' || course.status === 'ongoing'
   );
 
-  const handleTestNow = (course) => {
+  const handleTestNow = (course: Course) => {
     setSelectedCourse(course);
     setSelectedChapter(null);
     setIsTestModalOpen(true);

@@ -1,8 +1,9 @@
+
 import { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, BookOpen, CheckCircle, Circle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
-import { useCourseData } from '@/hooks/useCourseData';
+import { useStore } from '@/store/useStore';
 import PageTransition from '@/components/PageTransition';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -30,7 +31,7 @@ const ContentPage = () => {
     updateChapterContent,
     getNextChapter,
     getPreviousChapter
-  } = useCourseData();
+  } = useStore();
   
   const [isLoading, setIsLoading] = useState(false);
   const [progress, setProgress] = useState(0);

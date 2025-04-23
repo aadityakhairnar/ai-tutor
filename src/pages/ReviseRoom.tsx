@@ -1,8 +1,7 @@
 
 import { useState } from 'react';
 import { BookOpen, Clock, ChevronRight, GraduationCap } from 'lucide-react';
-import { Chapter } from '@/store/useStore';
-import { useCourseData } from '@/hooks/useCourseData';
+import { useStore, Course, Chapter } from '@/store/useStore';
 import EmptyState from '@/components/EmptyState';
 import PageTransition from '@/components/PageTransition';
 import { Button } from '@/components/ui/button';
@@ -12,8 +11,8 @@ import { Progress } from '@/components/ui/progress';
 import FlashcardModal from '@/components/FlashcardModal';
 
 const ReviseRoom = () => {
-  const { courses } = useCourseData();
-  const [selectedCourse, setSelectedCourse] = useState(null);
+  const { courses } = useStore();
+  const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
   const [selectedChapter, setSelectedChapter] = useState<Chapter | null>(null);
   const [isFlashcardModalOpen, setIsFlashcardModalOpen] = useState(false);
   const [isGeneratingFlashcards, setIsGeneratingFlashcards] = useState(false);
@@ -23,7 +22,7 @@ const ReviseRoom = () => {
     course => course.status === 'completed' || course.status === 'ongoing'
   );
 
-  const handleReviseNow = (course) => {
+  const handleReviseNow = (course: Course) => {
     setSelectedCourse(course);
     setSelectedChapter(null);
     setIsFlashcardModalOpen(true);

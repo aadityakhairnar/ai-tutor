@@ -3,8 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowLeft, BookOpen, CheckCircle, Circle, Menu, Play } from 'lucide-react';
 import { toast } from 'sonner';
-import { Course as CourseType, Chapter } from '@/store/useStore';
-import { useCourseData } from '@/hooks/useCourseData';
+import { useStore, Course as CourseType } from '@/store/useStore';
 import PageTransition from '@/components/PageTransition';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -20,7 +19,7 @@ const Course = () => {
     updateCourse, 
     markChapterCompleted, 
     updateChapterContent 
-  } = useCourseData();
+  } = useStore();
   
   const [course, setCourse] = useState<CourseType | null>(null);
   const [selectedChapter, setSelectedChapter] = useState<string | null>(null);
@@ -52,7 +51,7 @@ const Course = () => {
   };
   
   const handleChapterCompletion = (chapterId: string, completed: boolean) => {
-    if (course && id) {
+    if (course) {
       markChapterCompleted(course.id, chapterId, completed);
       
       // Update the local course state to reflect changes

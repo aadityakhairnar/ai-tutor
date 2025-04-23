@@ -4,8 +4,7 @@ import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowLeft, CheckCircle, ClipboardList, RefreshCw, CalendarDays, BookOpen, Play } from 'lucide-react';
 import { toast } from 'sonner';
-import { Chapter, useStore } from '@/store/useStore';
-import { useCourseData } from '@/hooks/useCourseData';
+import { useStore, Chapter, Course } from '@/store/useStore';
 import { generateSyllabus, SyllabusChapter } from '@/services/openai';
 import { generateChapterContent } from '@/services/contentGenerator';
 import PageTransition from '@/components/PageTransition';
@@ -19,8 +18,7 @@ const Syllabus = () => {
   const topic = location.state?.topic || 'Unknown Topic';
   const [loading, setLoading] = useState(true);
   const [chapters, setChapters] = useState<Chapter[]>([]);
-  const { setSyllabus } = useStore();
-  const { courses, addCourse } = useCourseData();
+  const { setSyllabus, addCourse, courses, updateCourse } = useStore();
   
   useEffect(() => {
     const fetchSyllabus = async () => {
@@ -38,8 +36,7 @@ const Syllabus = () => {
           id: `${id}-${index + 1}`,
           title: chapter.title,
           content: chapter.content,
-          completed: false,
-          position: index + 1
+          completed: false
         }));
         
         setChapters(formattedChapters);
@@ -71,8 +68,7 @@ const Syllabus = () => {
         id: `${id}-${index + 1}`,
         title: chapter.title,
         content: chapter.content,
-        completed: false,
-        position: index + 1
+        completed: false
       }));
       
       setChapters(formattedChapters);
@@ -93,11 +89,11 @@ const Syllabus = () => {
   };
   
   const handleStartCourse = async () => {
-    const newCourse = {
-      id: id || '',
+    const newCourse: Course = {
+      id,
       title: topic,
       description: `A comprehensive course about ${topic}.`,
-      status: 'ongoing' as const,
+      status: 'ongoing',
       progress: 0,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -108,7 +104,7 @@ const Syllabus = () => {
     if (existingCourse) {
       toast.info('You have already added this course');
     } else {
-      addCourse.mutate(newCourse);
+      addCourse(newCourse);
       toast.success('Course added to your learning journey');
     }
     
@@ -120,11 +116,11 @@ const Syllabus = () => {
   };
   
   const handlePlanLater = () => {
-    const newCourse = {
-      id: id || '',
+    const newCourse: Course = {
+      id,
       title: topic,
       description: `A comprehensive course about ${topic}.`,
-      status: 'planned' as const,
+      status: 'planned',
       progress: 0,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -135,7 +131,7 @@ const Syllabus = () => {
     if (existingCourse) {
       toast.info('You have already added this course');
     } else {
-      addCourse.mutate(newCourse);
+      addCourse(newCourse);
       toast.success('Course added to your planned courses');
     }
     
@@ -146,7 +142,7 @@ const Syllabus = () => {
     // Add the course if it doesn't exist
     const existingCourse = courses.find(course => course.id === id);
     if (!existingCourse) {
-      addCourse.mutate({
+      addCourse({
         id: id || '',
         title: topic,
         description: `A comprehensive course about ${topic}.`,
