@@ -1,9 +1,10 @@
+
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, BookOpen, Sparkles } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { useStore } from '@/store/useStore';
+import { useCourseData } from '@/hooks/useCourseData';
 import CourseCard from '@/components/CourseCard';
 import EmptyState from '@/components/EmptyState';
 import PageTransition from '@/components/PageTransition';
@@ -12,7 +13,7 @@ import { Button } from '@/components/ui/button';
 const Classroom = () => {
   const [searchInput, setSearchInput] = useState('');
   const [isSearching, setIsSearching] = useState(false);
-  const { courses } = useStore();
+  const { courses } = useCourseData();
   const navigate = useNavigate();
 
   const handleSearch = (e: React.FormEvent) => {

@@ -1,7 +1,59 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Course, Chapter } from '@/store/useStore';
+import { Course, Chapter, CourseStatus } from '@/store/useStore';
+
+// Define types that match exactly with the database schema
+type DbCourse = {
+  id: string;
+  title: string;
+  description: string | null;
+  status: string;
+  progress: number | null;
+  created_at: string | null;
+  updated_at: string | null;
+  user_id?: string;
+};
+
+type DbChapter = {
+  id: string;
+  title: string;
+  completed: boolean | null;
+  position: number;
+  course_id: string;
+};
+
+// Transform database course to app course
+const mapDbCourseToAppCourse = (dbCourse: DbCourse & { chapters?: DbChapter[] }): Course => {
+  return {
+    id: dbCourse.id,
+    title: dbCourse.title,
+    description: dbCourse.description || '',
+    status: dbCourse.status as CourseStatus,
+    progress: dbCourse.progress || 0,
+    createdAt: dbCourse.created_at || new Date().toISOString(),
+    updatedAt: dbCourse.updated_at || new Date().toISOString(),
+    chapters: dbCourse.chapters?.map(chapter => ({
+      id: chapter.id,
+      title: chapter.title,
+      completed: chapter.completed || false,
+      position: chapter.position
+    })) || []
+  };
+};
+
+// Transform app course to database course
+const mapAppCourseToDbCourse = (appCourse: Partial<Course>): Omit<DbCourse, 'user_id'> => {
+  return {
+    id: appCourse.id || undefined,
+    title: appCourse.title || '',
+    description: appCourse.description || null,
+    status: appCourse.status || 'planned',
+    progress: appCourse.progress || 0,
+    created_at: appCourse.createdAt || null,
+    updated_at: appCourse.updatedAt || null
+  };
+};
 
 export const useCourseData = () => {
   const queryClient = useQueryClient();
@@ -29,20 +81,44 @@ export const useCourseData = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return data || [];
+      return (data || []).map(mapDbCourseToAppCourse);
     },
   });
 
   const addCourse = useMutation({
     mutationFn: async (courseData: Partial<Course>) => {
-      const { data, error } = await supabase
+      const mappedData = mapAppCourseToDbCourse(courseData);
+
+      // Insert course
+      const { data: courseData1, error: courseError } = await supabase
         .from('courses')
-        .insert([courseData])
+        .insert({
+          ...mappedData,
+          title: mappedData.title || 'Untitled Course', // Ensure title is not empty
+          user_id: (await supabase.auth.getUser()).data.user?.id
+        })
         .select()
         .single();
 
-      if (error) throw error;
-      return data;
+      if (courseError) throw courseError;
+
+      // If there are chapters, insert them
+      if (courseData.chapters && courseData.chapters.length > 0) {
+        const chaptersData = courseData.chapters.map((chapter, index) => ({
+          title: chapter.title,
+          completed: chapter.completed || false,
+          position: chapter.position || index,
+          course_id: courseData1.id
+        }));
+
+        const { error: chaptersError } = await supabase
+          .from('chapters')
+          .insert(chaptersData);
+
+        if (chaptersError) throw chaptersError;
+      }
+
+      return courseData1;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['courses'] });
@@ -51,9 +127,15 @@ export const useCourseData = () => {
 
   const updateCourse = useMutation({
     mutationFn: async ({ id, ...updates }: Partial<Course> & { id: string }) => {
+      const mappedData = mapAppCourseToDbCourse(updates);
+      
       const { error } = await supabase
         .from('courses')
-        .update(updates)
+        .update({
+          ...mappedData,
+          // Convert createdAt/updatedAt to created_at/updated_at format
+          updated_at: new Date().toISOString()
+        })
         .eq('id', id);
 
       if (error) throw error;
@@ -67,7 +149,11 @@ export const useCourseData = () => {
     mutationFn: async ({ id, ...updates }: Partial<Chapter> & { id: string }) => {
       const { error } = await supabase
         .from('chapters')
-        .update(updates)
+        .update({
+          title: updates.title,
+          completed: updates.completed,
+          position: updates.position
+        })
         .eq('id', id);
 
       if (error) throw error;
@@ -77,11 +163,60 @@ export const useCourseData = () => {
     },
   });
 
+  // Helper function to get next and previous chapters
+  const getNextChapter = (courseId: string, currentChapterId: string): Chapter | null => {
+    const course = courses.find(c => c.id === courseId);
+    if (!course || !course.chapters) return null;
+    
+    const sortedChapters = [...course.chapters].sort((a, b) => a.position - b.position);
+    const currentIndex = sortedChapters.findIndex(ch => ch.id === currentChapterId);
+    
+    if (currentIndex === -1 || currentIndex === sortedChapters.length - 1) return null;
+    return sortedChapters[currentIndex + 1];
+  };
+
+  const getPreviousChapter = (courseId: string, currentChapterId: string): Chapter | null => {
+    const course = courses.find(c => c.id === courseId);
+    if (!course || !course.chapters) return null;
+    
+    const sortedChapters = [...course.chapters].sort((a, b) => a.position - b.position);
+    const currentIndex = sortedChapters.findIndex(ch => ch.id === currentChapterId);
+    
+    if (currentIndex <= 0) return null;
+    return sortedChapters[currentIndex - 1];
+  };
+
+  const markChapterCompleted = async (courseId: string, chapterId: string, completed: boolean) => {
+    await updateChapter.mutateAsync({ id: chapterId, completed });
+    
+    // Update course progress
+    const course = courses.find(c => c.id === courseId);
+    if (course && course.chapters) {
+      const totalChapters = course.chapters.length;
+      const completedChapters = course.chapters.filter(ch => 
+        ch.id === chapterId ? completed : ch.completed
+      ).length;
+      
+      const progress = Math.round((completedChapters / totalChapters) * 100);
+      await updateCourse.mutateAsync({ id: courseId, progress });
+    }
+  };
+
+  const updateChapterContent = async (courseId: string, chapterId: string, content: string) => {
+    // Since we're not storing content in the database, we can update it in the local state if needed
+    // This is essentially a no-op with our current implementation
+    console.log('Chapter content updated (not stored in DB):', { courseId, chapterId, contentLength: content.length });
+  };
+
   return {
     courses,
     isLoading,
     addCourse,
     updateCourse,
     updateChapter,
+    markChapterCompleted,
+    updateChapterContent,
+    getNextChapter,
+    getPreviousChapter
   };
 };
