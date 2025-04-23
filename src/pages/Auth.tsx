@@ -3,8 +3,8 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import AuthFields from "@/components/AuthFields";
+import AuthError from "@/components/AuthError";
 
 const AuthPage = () => {
   const [loading, setLoading] = useState(false);
@@ -32,11 +32,15 @@ const AuthPage = () => {
       if (error) setError(error.message);
       else navigate("/dashboard", { replace: true });
     } else {
-      const { error } = await supabase.auth.signUp({ email, password });
-      if (error) setError(error.message);
-      else {
-        alert("Signup successful! You can now log in.");
-        setVariant("login");
+      // Directly sign the user up and then log them in with no email confirmation step
+      const { error: signupError } = await supabase.auth.signUp({ email, password });
+      if (signupError) {
+        setError(signupError.message);
+      } else {
+        // attempt auto login
+        const { error: loginError } = await supabase.auth.signInWithPassword({ email, password });
+        if (loginError) setError("Signup complete, but auto-login failed. Please log in manually.");
+        else navigate("/dashboard", { replace: true });
       }
     }
     setLoading(false);
@@ -49,30 +53,14 @@ const AuthPage = () => {
           {variant === "login" ? "Sign In" : "Sign Up"}
         </h1>
         <form onSubmit={handleAuth} className="space-y-6">
-          <div>
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              autoComplete="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              disabled={loading}
-            />
-          </div>
-          <div>
-            <Label htmlFor="password">Password</Label>
-            <Input
-              id="password"
-              type="password"
-              autoComplete={variant === "login" ? "current-password" : "new-password"}
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              disabled={loading}
-            />
-          </div>
+          <AuthFields
+            email={email}
+            setEmail={setEmail}
+            password={password}
+            setPassword={setPassword}
+            loading={loading}
+            variant={variant}
+          />
           <Button type="submit" className="w-full" disabled={loading}>
             {loading
               ? variant === "login"
@@ -83,7 +71,7 @@ const AuthPage = () => {
               : "Sign Up"}
           </Button>
         </form>
-        {error && <div className="mt-3 text-red-500 text-sm text-center">{error}</div>}
+        <AuthError error={error} />
         <div className="mt-6 text-center text-sm">
           {variant === "login" ? (
             <>
@@ -115,4 +103,3 @@ const AuthPage = () => {
 };
 
 export default AuthPage;
-

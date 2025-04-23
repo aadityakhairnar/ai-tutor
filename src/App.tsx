@@ -1,10 +1,9 @@
 
-import { useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate, useNavigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import NavBar from "./components/NavBar";
 import Dashboard from "./pages/Dashboard";
 import Classroom from "./pages/Classroom";
@@ -15,26 +14,9 @@ import ReviseRoom from "./pages/ReviseRoom";
 import TestRoom from "./pages/TestRoom";
 import NotFound from "./pages/NotFound";
 import AuthPage from "./pages/Auth";
-import { useStore } from "./store/useStore";
-import { supabase } from "@/integrations/supabase/client";
+import AuthLoader from "./components/AuthLoader"; // moved loader to component
 
 const queryClient = new QueryClient();
-
-function AuthLoader() {
-  const setSession = useStore(s => s.setSession);
-  useEffect(() => {
-    // Listen for session changes (set up *before* getting session)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-    });
-    // Get current session
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session || null)
-    });
-    return () => subscription?.unsubscribe();
-  }, [setSession]);
-  return null;
-}
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
