@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 import AuthFields from "@/components/AuthFields";
 import AuthError from "@/components/AuthError";
 
@@ -13,6 +14,7 @@ const AuthPage = () => {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -27,23 +29,62 @@ const AuthPage = () => {
     setLoading(true);
     setError(null);
 
-    if (variant === "login") {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) setError(error.message);
-      else navigate("/dashboard", { replace: true });
-    } else {
-      // Directly sign the user up and then log them in with no email confirmation step
-      const { error: signupError } = await supabase.auth.signUp({ email, password });
-      if (signupError) {
-        setError(signupError.message);
+    try {
+      if (variant === "login") {
+        const { error } = await supabase.auth.signInWithPassword({ 
+          email: email.trim(), 
+          password 
+        });
+        
+        if (error) {
+          console.error("Login error:", error.message);
+          setError(error.message);
+        } else {
+          toast({
+            title: "Welcome back!",
+            description: "You've successfully logged in."
+          });
+          navigate("/dashboard", { replace: true });
+        }
       } else {
-        // attempt auto login
-        const { error: loginError } = await supabase.auth.signInWithPassword({ email, password });
-        if (loginError) setError("Signup complete, but auto-login failed. Please log in manually.");
-        else navigate("/dashboard", { replace: true });
+        const { error: signupError } = await supabase.auth.signUp({ 
+          email: email.trim(), 
+          password,
+          options: {
+            emailRedirectTo: window.location.origin,
+            data: {
+              email: email.trim(),
+            }
+          } 
+        });
+        
+        if (signupError) {
+          console.error("Signup error:", signupError.message);
+          setError(signupError.message);
+        } else {
+          // Auto login after signup
+          const { error: loginError } = await supabase.auth.signInWithPassword({ 
+            email: email.trim(), 
+            password 
+          });
+          
+          if (loginError) {
+            setError("Signup complete, but auto-login failed. Please log in manually.");
+          } else {
+            toast({
+              title: "Account created!",
+              description: "You've successfully signed up and logged in."
+            });
+            navigate("/dashboard", { replace: true });
+          }
+        }
       }
+    } catch (err) {
+      console.error("Auth error:", err);
+      setError("An unexpected error occurred. Please try again.");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }
 
   return (
@@ -96,6 +137,12 @@ const AuthPage = () => {
               </button>
             </>
           )}
+        </div>
+        
+        <div className="mt-4 pt-4 border-t text-xs text-center text-muted-foreground">
+          <p>Test credentials:</p>
+          <p>Email: user@testapp.com</p>
+          <p>Password: UserTest456!</p>
         </div>
       </div>
     </div>

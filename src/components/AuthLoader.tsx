@@ -8,15 +8,22 @@ const AuthLoader = () => {
 
   useEffect(() => {
     // Listen for session changes (set up *before* getting session)
-    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log("Auth state changed:", event, session ? "User logged in" : "No session");
       setSession(session);
     });
+    
     // Get current session
     supabase.auth.getSession().then(({ data }) => {
+      console.log("Initial session check:", data.session ? "Session found" : "No session");
       setSession(data.session || null);
     });
-    return () => data.subscription?.unsubscribe();
+    
+    return () => {
+      data.subscription.unsubscribe();
+    };
   }, [setSession]);
+  
   return null;
 };
 
