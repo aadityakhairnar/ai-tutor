@@ -1,48 +1,26 @@
 
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { BookOpen, ChevronRight, GraduationCap, PenLine, TestTube } from 'lucide-react';
-import { useStore, CourseStatus } from '@/store/useStore';
-import CourseCard from '@/components/CourseCard';
-import CourseFilters from '@/components/CourseFilters';
-import EmptyState from '@/components/EmptyState';
-import PageTransition from '@/components/PageTransition';
-import ApiKeyForm from '@/components/ApiKeyForm';
-import { Button } from '@/components/ui/button';
+import { useEffect } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import { motion } from 'framer-motion'
+import { BookOpen, ChevronRight, PenLine, GraduationCap, TestTube } from 'lucide-react'
+import { useStore } from '@/store/useStore'
+import CourseCard from '@/components/CourseCard'
+import EmptyState from '@/components/EmptyState'
+import PageTransition from '@/components/PageTransition'
+import { Button } from '@/components/ui/button'
 
 const Dashboard = () => {
-  const { courses, updateCourseStatus } = useStore();
-  const [filter, setFilter] = useState<CourseStatus | 'all'>('all');
-  
-  const filteredCourses = filter === 'all' 
-    ? courses 
-    : courses.filter(course => course.status === filter);
-  
-  const coursesByStatus = {
-    ongoing: courses.filter(course => course.status === 'ongoing'),
-    completed: courses.filter(course => course.status === 'completed'),
-    planned: courses.filter(course => course.status === 'planned')
-  };
-  
-  const handleStatusChange = (courseId: string, status: CourseStatus) => {
-    updateCourseStatus(courseId, status);
-  };
-  
-  const contentVariants = {
-    hidden: { opacity: 0 },
-    visible: { 
-      opacity: 1,
-      transition: { 
-        staggerChildren: 0.1 
-      } 
-    }
-  };
-  
-  const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: { opacity: 1, y: 0 }
-  };
+  const { courses, fetchUserCourses, session } = useStore()
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    // Redirect unauthenticated users
+    if (session === null) navigate("/auth")
+  }, [session, navigate])
+
+  useEffect(() => {
+    if (session) fetchUserCourses()
+  }, [session, fetchUserCourses])
 
   return (
     <PageTransition>
@@ -54,19 +32,16 @@ const Dashboard = () => {
               Track your progress, continue learning, or discover new topics to explore.
             </p>
           </div>
-          <div className="mt-4 md:mt-0">
-            <ApiKeyForm />
-          </div>
         </div>
-      
+
         <section className="mb-16">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6">
             <h2 className="text-2xl font-display mb-0">Learning Paths</h2>
           </div>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <Link to="/classroom">
-              <motion.div 
+              <motion.div
                 className="book-cover flex items-center h-36 rounded-md"
                 whileHover={{ y: -5, boxShadow: '0 15px 30px -10px rgba(0, 0, 0, 0.2)' }}
               >
@@ -83,9 +58,9 @@ const Dashboard = () => {
                 </div>
               </motion.div>
             </Link>
-            
+
             <Link to="/reviseroom">
-              <motion.div 
+              <motion.div
                 className="book-cover flex items-center h-36 rounded-md"
                 whileHover={{ y: -5, boxShadow: '0 15px 30px -10px rgba(0, 0, 0, 0.2)' }}
               >
@@ -102,9 +77,9 @@ const Dashboard = () => {
                 </div>
               </motion.div>
             </Link>
-            
+
             <Link to="/testroom">
-              <motion.div 
+              <motion.div
                 className="book-cover flex items-center h-36 rounded-md"
                 whileHover={{ y: -5, boxShadow: '0 15px 30px -10px rgba(0, 0, 0, 0.2)' }}
               >
@@ -123,27 +98,22 @@ const Dashboard = () => {
             </Link>
           </div>
         </section>
-        
+
         <section>
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6">
             <h2 className="text-2xl font-display mb-0">Your Courses</h2>
-            <div className="mt-3 sm:mt-0">
-              <CourseFilters activeFilter={filter} onFilterChange={setFilter} />
-            </div>
           </div>
-          
-          {filteredCourses.length > 0 ? (
-            <motion.div 
+
+          {courses.length > 0 ? (
+            <motion.div
               className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-              variants={contentVariants}
               initial="hidden"
               animate="visible"
             >
-              {filteredCourses.map(course => (
-                <motion.div key={course.id} variants={itemVariants}>
-                  <CourseCard 
-                    course={course} 
-                    onStatusChange={handleStatusChange}
+              {courses.map(course => (
+                <motion.div key={course.id}>
+                  <CourseCard
+                    course={course}
                   />
                 </motion.div>
               ))}
@@ -152,7 +122,7 @@ const Dashboard = () => {
             <EmptyState
               icon={<BookOpen className="w-full h-full" />}
               title="No courses found"
-              description={`You don't have any ${filter !== 'all' ? filter : ''} courses yet.`}
+              description={`You don't have any completed courses yet.`}
               action={
                 <Link to="/classroom">
                   <Button>Find new topics to learn</Button>
@@ -163,7 +133,7 @@ const Dashboard = () => {
         </section>
       </div>
     </PageTransition>
-  );
-};
+  )
+}
 
-export default Dashboard;
+export default Dashboard
