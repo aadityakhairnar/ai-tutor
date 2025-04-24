@@ -66,9 +66,7 @@ interface StoreState {
   getTestQuestionsForCourse: (courseId: string) => TestQuestion[];
 }
 
-const sampleCourses: Course[] = [
-  // Removed placeholder courses
-];
+const sampleCourses: Course[] = [];
 
 export const useStore = create<StoreState>()(
   persist(
