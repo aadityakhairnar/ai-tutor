@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -8,7 +7,7 @@ import CourseCard from '@/components/CourseCard';
 import CourseFilters from '@/components/CourseFilters';
 import EmptyState from '@/components/EmptyState';
 import PageTransition from '@/components/PageTransition';
-import ApiKeyForm from '@/components/ApiKeyForm';
+import ApiKeyForm from '@/components/ApiKeyForm/index';
 import { Button } from '@/components/ui/button';
 
 const Dashboard = () => {
