@@ -82,10 +82,30 @@ const Profile = () => {
                 : 'Tell us about yourself to personalize your learning journey'}
             </p>
           </div>
-          <UserPreferencesForm onSuccess={() => {
+          <UserPreferencesForm onSuccess={async () => {
             setIsEditing(false);
-            // Refresh the page to show updated preferences
-            window.location.reload();
+            // Re-fetch preferences to update the UI without a full page refresh
+            setLoading(true); // Set loading to true to show spinner while re-fetching
+            try {
+              const { data, error } = await supabase
+                .from('user_preferences')
+                .select('*')
+                .eq('user_id', user?.id)
+                .single();
+
+              if (error && error.code !== 'PGRST116') { // PGRST116 is "no rows returned"
+                throw error;
+              }
+              setPreferences(data);
+            } catch (error: any) {
+              toast({
+                title: "Error",
+                description: error.message,
+                variant: "destructive",
+              });
+            } finally {
+              setLoading(false);
+            }
           }} />
         </div>
       </div>

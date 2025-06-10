@@ -35,7 +35,7 @@ const NavBar = () => {
         <div className="flex h-16 items-center justify-between">
           <Link to="/" className="flex items-center space-x-2">
             <Book className="h-6 w-6" />
-            <span className="font-display text-xl font-bold">Campus Sorcery</span>
+            <span className="font-display text-xl font-bold">Acampus AI</span>
           </Link>
 
           {/* Desktop Navigation */}

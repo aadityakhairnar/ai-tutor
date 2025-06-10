@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { BookOpen, ChevronRight, GraduationCap, PenLine, TestTube } from 'lucide-react';
 import { useStore, CourseStatus } from '@/store/useStore';
@@ -9,10 +9,45 @@ import EmptyState from '@/components/EmptyState';
 import PageTransition from '@/components/PageTransition';
 import ApiKeyForm from '@/components/ApiKeyForm';
 import { Button } from '@/components/ui/button';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/components/ui/use-toast';
 
 const Dashboard = () => {
   const { courses, updateCourseStatus } = useStore();
   const [filter, setFilter] = useState<CourseStatus | 'all'>('all');
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  
+  useEffect(() => {
+    const checkUserPreferences = async () => {
+      if (user) {
+        const { data, error } = await supabase
+          .from('user_preferences')
+          .select('id')
+          .eq('user_id', user.id)
+          .single();
+
+        if (error && error.code === 'PGRST116') { // PGRST116 means no rows returned
+          toast({
+            title: "Welcome!",
+            description: "Please complete your profile to personalize your learning experience.",
+            variant: "default"
+          });
+          navigate('/profile');
+        } else if (error) {
+          toast({
+            title: "Error",
+            description: error.message,
+            variant: "destructive"
+          });
+        }
+      }
+    };
+
+    checkUserPreferences();
+  }, [user, navigate, toast]);
   
   const filteredCourses = filter === 'all' 
     ? courses 

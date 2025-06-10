@@ -14,6 +14,7 @@ const Auth = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPreferences, setShowPreferences] = useState(false);
+  const [emailVerificationSent, setEmailVerificationSent] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -33,7 +34,7 @@ const Auth = () => {
           title: "Success!",
           description: "Please check your email to verify your account.",
         });
-        setShowPreferences(true);
+        setEmailVerificationSent(true);
       } else {
         navigate('/dashboard');
       }
@@ -47,6 +48,29 @@ const Auth = () => {
       setLoading(false);
     }
   };
+
+  if (emailVerificationSent) {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-4 py-12 sm:px-6 lg:px-8">
+        <div className="w-full max-w-md space-y-8 text-center">
+          <Mail className="mx-auto h-12 w-12 text-primary" />
+          <h2 className="mt-6 text-3xl font-bold tracking-tight">
+            Verify Your Email
+          </h2>
+          <p className="mt-2 text-sm text-muted-foreground">
+            A verification link has been sent to <span className="font-medium text-foreground">{email}</span>.
+            Please check your inbox (and spam folder) and click the link to activate your account.
+          </p>
+          <Button onClick={() => {
+            setEmailVerificationSent(false);
+            setIsLogin(true);
+          }} className="w-full mt-4">
+            Back to Login
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   if (showPreferences) {
     return (

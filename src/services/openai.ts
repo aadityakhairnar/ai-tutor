@@ -4,7 +4,7 @@ const API_URL = 'https://api.openai.com/v1/chat/completions';
 
 // Get API key from localStorage or environment variable
 export const getOpenAIKey = () => {
-  return localStorage.getItem('openai_key') || '';
+  return localStorage.getItem('openai_key') || import.meta.env.VITE_OPENAI_API_KEY || '';
 };
 
 export const setOpenAIKey = (key: string) => {
@@ -20,7 +20,7 @@ export const generateSyllabus = async (topic: string): Promise<SyllabusChapter[]
   const apiKey = getOpenAIKey();
   
   if (!apiKey) {
-    toast.error("OpenAI API key is not set. Please set your API key in settings.");
+    toast.error("OpenAI API key is not set. Please set your API key in settings or ensure VITE_OPENAI_API_KEY is set in your .env file.");
     throw new Error("OpenAI API key is not set");
   }
   
