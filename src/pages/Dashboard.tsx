@@ -7,7 +7,7 @@ import CourseCard from '@/components/CourseCard';
 import CourseFilters from '@/components/CourseFilters';
 import EmptyState from '@/components/EmptyState';
 import PageTransition from '@/components/PageTransition';
-import ApiKeyForm from '@/components/ApiKeyForm/index';
+import ApiKeyForm from '@/components/ApiKeyForm';
 import { Button } from '@/components/ui/button';
 
 const Dashboard = () => {
