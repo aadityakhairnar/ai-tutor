@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -14,7 +13,9 @@ import Course from "./pages/Course";
 import ContentPage from "./pages/ContentPage";
 import ReviseRoom from "./pages/ReviseRoom";
 import TestRoom from "./pages/TestRoom";
+import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
+import Landing from "./pages/Landing";
 
 const queryClient = new QueryClient();
 
@@ -29,7 +30,7 @@ const App = () => (
             <NavBar />
             <main className="flex-grow">
               <Routes>
-                <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                <Route path="/" element={<Landing />} />
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/classroom" element={<Classroom />} />
@@ -38,6 +39,7 @@ const App = () => (
                 <Route path="/classroom/:courseId/content/:chapterId" element={<ContentPage />} />
                 <Route path="/reviseroom" element={<ReviseRoom />} />
                 <Route path="/testroom" element={<TestRoom />} />
+                <Route path="/profile" element={<Profile />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </main>

@@ -1,7 +1,6 @@
-
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Menu, X, Settings, Book, RefreshCw, PenLine, LogOut } from 'lucide-react';
+import { Menu, X, Settings, Book, RefreshCw, PenLine, LogOut, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -16,6 +15,8 @@ const NavBar = () => {
     return location.pathname === path;
   };
 
+  const isLandingPage = location.pathname === '/';
+
   const links = [
     { name: 'Dashboard', path: '/dashboard', icon: Book },
     { name: 'Classroom', path: '/classroom', icon: PenLine },
@@ -29,103 +30,116 @@ const NavBar = () => {
   };
 
   return (
-    <nav className="bg-card border-b border-border sticky top-0 z-50 backdrop-blur-sm bg-opacity-80">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
-          <div className="flex items-center">
-            <Link to="/dashboard" className="flex items-center">
-              <span className="font-display text-xl text-primary font-semibold">acampus<span className="text-accent-foreground">ai</span></span>
-            </Link>
-          </div>
-          
-          <div className="hidden md:block">
-            <div className="flex items-center space-x-4">
-              {user ? (
-                <>
-                  {links.map((link) => (
-                    <Link
-                      key={link.name}
-                      to={link.path}
-                      className={`nav-link flex items-center ${isActive(link.path) ? 'active' : ''}`}
-                    >
-                      <link.icon className="w-4 h-4 mr-2" />
-                      {link.name}
-                    </Link>
-                  ))}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleLogout}
-                    className="flex items-center"
+    <nav className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="container mx-auto px-4">
+        <div className="flex h-16 items-center justify-between">
+          <Link to="/" className="flex items-center space-x-2">
+            <Book className="h-6 w-6" />
+            <span className="font-display text-xl font-bold">Campus Sorcery</span>
+          </Link>
+
+          {/* Desktop Navigation */}
+          <div className="hidden md:flex md:items-center md:space-x-4">
+            {!isLandingPage && user && (
+              <>
+                {links.map((link) => (
+                  <Link
+                    key={link.path}
+                    to={link.path}
+                    className={`nav-link ${isActive(link.path) ? 'active' : ''}`}
                   >
-                    <LogOut className="w-4 h-4 mr-2" />
-                    Logout
+                    {link.name}
+                  </Link>
+                ))}
+              </>
+            )}
+            
+            {user ? (
+              <div className="flex items-center space-x-4">
+                <Link to="/profile">
+                  <Button variant="ghost" size="icon">
+                    <User className="h-5 w-5" />
                   </Button>
-                </>
-              ) : (
-                <Link to="/auth">
-                  <Button>Login</Button>
                 </Link>
-              )}
-            </div>
+                <Button variant="ghost" size="icon" onClick={handleLogout}>
+                  <LogOut className="h-5 w-5" />
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center space-x-4">
+                <Link to="/auth">
+                  <Button>Sign In</Button>
+                </Link>
+              </div>
+            )}
           </div>
-          
-          <div className="md:hidden">
+
+          {/* Mobile Navigation Button */}
+          <div className="flex md:hidden">
             <Button
               variant="ghost"
               size="icon"
               onClick={() => setIsOpen(!isOpen)}
-              aria-label="Toggle menu"
             >
               {isOpen ? (
-                <X className="w-5 h-5" />
+                <X className="h-6 w-6" />
               ) : (
-                <Menu className="w-5 h-5" />
+                <Menu className="h-6 w-6" />
               )}
             </Button>
           </div>
         </div>
       </div>
-      
-      {/* Mobile menu */}
+
+      {/* Mobile Navigation Menu */}
       {isOpen && (
         <div className="md:hidden">
-          <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 bg-card animate-fade-in">
-            {user ? (
+          <div className="space-y-1 px-2 pb-3 pt-2">
+            {!isLandingPage && user && (
               <>
                 {links.map((link) => (
                   <Link
-                    key={link.name}
+                    key={link.path}
                     to={link.path}
                     className={`block px-3 py-2 rounded-md text-base font-medium ${
                       isActive(link.path)
-                        ? 'bg-primary/10 text-primary'
-                        : 'text-foreground hover:bg-accent hover:text-accent-foreground'
-                    } flex items-center`}
+                        ? 'bg-primary text-primary-foreground'
+                        : 'text-foreground hover:bg-muted'
+                    }`}
                     onClick={() => setIsOpen(false)}
                   >
-                    <link.icon className="w-4 h-4 mr-2" />
                     {link.name}
                   </Link>
                 ))}
+              </>
+            )}
+            
+            {user ? (
+              <>
+                <Link
+                  to="/profile"
+                  className="block px-3 py-2 rounded-md text-base font-medium text-foreground hover:bg-muted"
+                  onClick={() => setIsOpen(false)}
+                >
+                  Profile
+                </Link>
                 <button
-                  className="w-full text-left px-3 py-2 rounded-md text-base font-medium text-foreground hover:bg-accent hover:text-accent-foreground flex items-center"
+                  className="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-foreground hover:bg-muted"
                   onClick={() => {
                     handleLogout();
                     setIsOpen(false);
                   }}
                 >
-                  <LogOut className="w-4 h-4 mr-2" />
-                  Logout
+                  Sign Out
                 </button>
               </>
             ) : (
               <Link
                 to="/auth"
-                className="block px-3 py-2 rounded-md text-base font-medium text-foreground hover:bg-accent hover:text-accent-foreground"
+                className="block px-3 py-2 rounded-md text-base font-medium text-foreground hover:bg-muted"
                 onClick={() => setIsOpen(false)}
               >
-                Login
+                Sign In
               </Link>
             )}
           </div>

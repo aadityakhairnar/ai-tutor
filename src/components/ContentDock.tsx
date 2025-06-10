@@ -1,8 +1,6 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { HelpCircle, BookOpen, Highlighter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import CourseMenu from '@/components/CourseMenu';
 import { Chapter } from '@/store/useStore';
 
@@ -53,57 +51,37 @@ const ContentDock: React.FC<ContentDockProps> = ({
 
   return (
     <div className="fixed left-4 bottom-4 z-20 flex flex-col gap-2 items-center">
-      <div className="flex flex-col gap-2 bg-card/90 backdrop-blur-sm p-2 rounded-full shadow-lg border border-border">
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="rounded-full hover:bg-primary/10"
-                onClick={onOpenChat}
-              >
-                <HelpCircle className="h-5 w-5" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="right">
-              <p>Ask a Doubt</p>
-            </TooltipContent>
-          </Tooltip>
+      <div className="flex flex-col gap-2 bg-card/90 backdrop-blur-sm p-2 rounded-lg shadow-lg border border-border">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="justify-start gap-2 hover:bg-primary/10"
+          onClick={onOpenChat}
+        >
+          <HelpCircle className="h-5 w-5" />
+          <span>Ask a Doubt</span>
+        </Button>
 
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                ref={buttonRef}
-                variant="ghost"
-                size="icon"
-                className="rounded-full hover:bg-primary/10"
-                onClick={() => setShowMenu(!showMenu)}
-              >
-                <BookOpen className="h-5 w-5" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="right">
-              <p>Course Syllabus</p>
-            </TooltipContent>
-          </Tooltip>
+        <Button
+          ref={buttonRef}
+          variant="ghost"
+          size="sm"
+          className="justify-start gap-2 hover:bg-primary/10"
+          onClick={() => setShowMenu(!showMenu)}
+        >
+          <BookOpen className="h-5 w-5" />
+          <span>Course Syllabus</span>
+        </Button>
 
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant={isHighlighterActive ? "default" : "ghost"}
-                size="icon"
-                className={`rounded-full ${isHighlighterActive ? "bg-amber-500 hover:bg-amber-600" : "hover:bg-primary/10"}`}
-                onClick={toggleHighlighter}
-              >
-                <Highlighter className="h-5 w-5" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="right">
-              <p>{isHighlighterActive ? "Disable Highlighter" : "Enable Highlighter"}</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+        <Button
+          variant={isHighlighterActive ? "default" : "ghost"}
+          size="sm"
+          className={`justify-start gap-2 ${isHighlighterActive ? "bg-amber-500 hover:bg-amber-600" : "hover:bg-primary/10"}`}
+          onClick={toggleHighlighter}
+        >
+          <Highlighter className="h-5 w-5" />
+          <span>{isHighlighterActive ? "Disable Highlighter" : "Enable Highlighter"}</span>
+        </Button>
       </div>
 
       {showMenu && (

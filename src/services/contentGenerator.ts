@@ -1,15 +1,43 @@
 import { toast } from "sonner";
 import { getOpenAIKey } from "./openai";
+import { supabase } from "@/integrations/supabase/client";
 
 const API_URL = 'https://api.openai.com/v1/chat/completions';
 
-export const generateChapterContent = async (chapterTitle: string, chapterDescription: string): Promise<string> => {
+interface UserPreferences {
+  education_level: string;
+  age: number;
+  content_tone: string;
+  experience_level: string;
+  interested_topics: string[];
+}
+
+const getUserPreferences = async (userId: string): Promise<UserPreferences | null> => {
+  try {
+    const { data, error } = await supabase
+      .from('user_preferences')
+      .select('*')
+      .eq('user_id', userId)
+      .single();
+
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error("Error fetching user preferences:", error);
+    return null;
+  }
+};
+
+export const generateChapterContent = async (chapterTitle: string, chapterDescription: string, userId: string): Promise<string> => {
   const apiKey = getOpenAIKey();
   
   if (!apiKey) {
     toast.error("OpenAI API key is not set. Please enter your API key in settings.");
     throw new Error("OpenAI API key is not set");
   }
+
+  // Get user preferences
+  const preferences = await getUserPreferences(userId);
   
   try {
     const response = await fetch(API_URL, {
@@ -23,7 +51,23 @@ export const generateChapterContent = async (chapterTitle: string, chapterDescri
         messages: [
           {
             role: "system",
-            content: "You are an expert educational content creator specialized in creating comprehensive, engaging and educational content. Format your response with clear headings, paragraphs, and use proper markdown for any mathematical formulas, code blocks, or specialized notation."
+            content: `You are an expert educational content creator specialized in creating comprehensive, engaging and educational content. 
+            Format your response with clear headings, paragraphs, and use proper markdown for any mathematical formulas, code blocks, or specialized notation.
+            ${preferences ? `
+            Consider the following user preferences when creating content:
+            - Education Level: ${preferences.education_level}
+            - Age: ${preferences.age} years
+            - Preferred Content Tone: ${preferences.content_tone}
+            - Experience Level: ${preferences.experience_level}
+            - Interested Topics: ${preferences.interested_topics.join(', ')}
+            
+            Adjust your content accordingly:
+            - Use appropriate complexity based on education and experience level
+            - Match the preferred content tone
+            - Include examples and references relevant to the user's age
+            - Connect concepts to the user's interested topics where possible
+            - Use age-appropriate language and examples
+            ` : ''}`
           },
           {
             role: "user",
@@ -48,7 +92,7 @@ export const generateChapterContent = async (chapterTitle: string, chapterDescri
             - Use LaTeX formatting for mathematical equations ($...$ for inline, $$...$$) for block equations)
             - Use proper code blocks with language specification
             
-            The content should be comprehensive, educational, engaging and suitable for learners at various levels.`
+            The content should be comprehensive, educational, engaging and suitable for the user's level.`
           }
         ],
         temperature: 0.7,
@@ -66,7 +110,7 @@ export const generateChapterContent = async (chapterTitle: string, chapterDescri
     
   } catch (error) {
     console.error("Error generating chapter content:", error);
-    toast.error("Failed to generate chapter content. Please try again.");
+    toast.error("Failed to generate content. Please try again.");
     throw error;
   }
 };
@@ -76,14 +120,17 @@ export interface FlashcardData {
   back: string;
 }
 
-export const generateFlashcards = async (chapterTitle: string, chapterContent: string): Promise<FlashcardData[]> => {
+export const generateFlashcards = async (chapterContent: string, userId: string): Promise<Array<{ question: string; answer: string }>> => {
   const apiKey = getOpenAIKey();
   
   if (!apiKey) {
     toast.error("OpenAI API key is not set. Please enter your API key in settings.");
     throw new Error("OpenAI API key is not set");
   }
-  
+
+  // Get user preferences
+  const preferences = await getUserPreferences(userId);
+
   try {
     const response = await fetch(API_URL, {
       method: 'POST',
@@ -96,35 +143,29 @@ export const generateFlashcards = async (chapterTitle: string, chapterContent: s
         messages: [
           {
             role: "system",
-            content: "You are an expert educational flashcard creator. Your task is to create effective flashcards that help students learn and recall key information. Respond with only the JSON array of flashcards, with no additional text."
+            content: `You are an expert educational content creator specialized in creating effective flashcards.
+            ${preferences ? `
+            Consider the following user preferences when creating flashcards:
+            - Education Level: ${preferences.education_level}
+            - Age: ${preferences.age} years
+            - Experience Level: ${preferences.experience_level}
+            
+            Adjust your flashcards accordingly:
+            - Use appropriate complexity based on education and experience level
+            - Use age-appropriate language and examples
+            - Focus on key concepts that match the user's learning level
+            ` : ''}`
           },
           {
             role: "user",
-            content: `Create 5 educational flashcards for the topic: "${chapterTitle}".
+            content: `Create a set of flashcards based on this chapter content. For each flashcard:
+            - Create a clear, concise question that tests understanding
+            - Provide a detailed, educational answer
+            - Include examples where appropriate
+            - Use proper markdown formatting for any mathematical formulas or code
             
-            If provided, use this content as reference: "${chapterContent.substring(0, 3000)}..."
-            
-            Each flashcard should have:
-            1. A clear, concise question or term on the front
-            2. A comprehensive but concise answer or explanation on the back
-            
-            Format your response as a JSON array of objects with "front" and "back" properties.
-            Example format:
-            [
-              {
-                "front": "What is photosynthesis?",
-                "back": "The process by which green plants and some other organisms use sunlight to synthesize nutrients from carbon dioxide and water."
-              },
-              ...
-            ]
-            
-            Make sure your flashcards:
-            - Cover the most important concepts from the topic
-            - Are well-phrased and educational
-            - Encourage critical thinking
-            - Have a clear connection between front and back sides
-            
-            Return ONLY a valid JSON array, no additional explanation or text.`
+            Chapter content:
+            ${chapterContent}`
           }
         ],
         temperature: 0.7,
@@ -140,22 +181,14 @@ export const generateFlashcards = async (chapterTitle: string, chapterContent: s
     const data = await response.json();
     const content = data.choices[0].message.content;
     
-    // Parse the JSON response
-    try {
-      // Clean the response: Remove markdown code blocks if present
-      const cleanedContent = content.replace(/```json\n|\n```|```/g, '');
-      console.log("Cleaned flashcard content for parsing:", cleanedContent);
-      
-      const flashcards = JSON.parse(cleanedContent);
-      if (Array.isArray(flashcards)) {
-        return flashcards;
-      } else {
-        throw new Error("Invalid response format");
-      }
-    } catch (e) {
-      console.error("Failed to parse flashcards JSON:", content);
-      throw new Error("Failed to parse flashcard data");
-    }
+    // Parse the response into flashcards
+    const flashcards = content.split('\n\n').map(card => {
+      const [question, answer] = card.split('\n').filter(line => line.trim());
+      return { question, answer };
+    });
+    
+    return flashcards;
+    
   } catch (error) {
     console.error("Error generating flashcards:", error);
     toast.error("Failed to generate flashcards. Please try again.");
@@ -169,14 +202,17 @@ export interface TestQuestionData {
   correctAnswer: number;
 }
 
-export const generateTestQuestions = async (chapterTitle: string, chapterContent: string, count: number = 5): Promise<TestQuestionData[]> => {
+export const generateTestQuestions = async (chapterContent: string, userId: string): Promise<Array<{ question: string; options: string[]; correctAnswer: string }>> => {
   const apiKey = getOpenAIKey();
   
   if (!apiKey) {
     toast.error("OpenAI API key is not set. Please enter your API key in settings.");
     throw new Error("OpenAI API key is not set");
   }
-  
+
+  // Get user preferences
+  const preferences = await getUserPreferences(userId);
+
   try {
     const response = await fetch(API_URL, {
       method: 'POST',
@@ -189,37 +225,30 @@ export const generateTestQuestions = async (chapterTitle: string, chapterContent
         messages: [
           {
             role: "system",
-            content: "You are an expert educational test creator. Your task is to create effective multiple-choice test questions that accurately assess student knowledge. Respond with only the JSON array of questions, with no additional text."
+            content: `You are an expert educational content creator specialized in creating effective test questions.
+            ${preferences ? `
+            Consider the following user preferences when creating test questions:
+            - Education Level: ${preferences.education_level}
+            - Age: ${preferences.age} years
+            - Experience Level: ${preferences.experience_level}
+            
+            Adjust your questions accordingly:
+            - Use appropriate complexity based on education and experience level
+            - Use age-appropriate language and examples
+            - Create questions that match the user's learning level
+            - Include a mix of difficulty levels appropriate for the user
+            ` : ''}`
           },
           {
             role: "user",
-            content: `Create ${count} multiple-choice test questions for the topic: "${chapterTitle}".
+            content: `Create a set of multiple choice questions based on this chapter content. For each question:
+            - Create a clear, well-structured question
+            - Provide 4 options (A, B, C, D)
+            - Mark the correct answer
+            - Use proper markdown formatting for any mathematical formulas or code
             
-            If provided, use this content as reference: "${chapterContent.substring(0, 3000)}..."
-            
-            Each question should have:
-            1. A clear, well-formulated question
-            2. Four answer options (A, B, C, D)
-            3. The index of the correct answer (0 for A, 1 for B, 2 for C, 3 for D)
-            
-            Format your response as a JSON array of objects with "question", "options" (array of strings), and "correctAnswer" (number 0-3) properties.
-            Example format:
-            [
-              {
-                "question": "What is the capital of France?",
-                "options": ["London", "Paris", "Berlin", "Madrid"],
-                "correctAnswer": 1
-              },
-              ...
-            ]
-            
-            Make sure your questions:
-            - Cover the most important concepts from the topic
-            - Are clear and unambiguous
-            - Have one definitively correct answer and three plausible distractors
-            - Vary in difficulty
-            
-            Return ONLY a valid JSON array, no additional explanation or text.`
+            Chapter content:
+            ${chapterContent}`
           }
         ],
         temperature: 0.7,
@@ -235,22 +264,17 @@ export const generateTestQuestions = async (chapterTitle: string, chapterContent
     const data = await response.json();
     const content = data.choices[0].message.content;
     
-    // Parse the JSON response
-    try {
-      // Clean the response: Remove markdown code blocks if present
-      const cleanedContent = content.replace(/```json\n|\n```|```/g, '');
-      console.log("Cleaned test questions content for parsing:", cleanedContent);
-      
-      const questions = JSON.parse(cleanedContent);
-      if (Array.isArray(questions)) {
-        return questions;
-      } else {
-        throw new Error("Invalid response format");
-      }
-    } catch (e) {
-      console.error("Failed to parse test questions JSON:", content);
-      throw new Error("Failed to parse test question data");
-    }
+    // Parse the response into test questions
+    const questions = content.split('\n\n').map(q => {
+      const lines = q.split('\n').filter(line => line.trim());
+      const question = lines[0];
+      const options = lines.slice(1, 5);
+      const correctAnswer = lines[5]?.match(/Correct: ([A-D])/)?.[1] || 'A';
+      return { question, options, correctAnswer };
+    });
+    
+    return questions;
+    
   } catch (error) {
     console.error("Error generating test questions:", error);
     toast.error("Failed to generate test questions. Please try again.");

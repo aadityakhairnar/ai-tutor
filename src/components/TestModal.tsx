@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Progress } from '@/components/ui/progress';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
+import { supabase } from '@/integrations/supabase/client';
 
 interface TestModalProps {
   isOpen: boolean;
@@ -53,6 +54,15 @@ const TestModal = ({ isOpen, onClose, course, selectedChapter, onChapterSelect, 
   const [loading, setLoading] = useState(false);
   const [testTitle, setTestTitle] = useState('');
   const [isLoadingExplanation, setIsLoadingExplanation] = useState<Record<number, boolean>>({});
+  const [userId, setUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const getUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setUserId(user?.id || null);
+    };
+    getUser();
+  }, []);
 
   useEffect(() => {
     let timer: number;
@@ -87,10 +97,15 @@ const TestModal = ({ isOpen, onClose, course, selectedChapter, onChapterSelect, 
   };
 
   const handleSelectChapter = async (chapter: Chapter) => {
+    if (!userId) {
+      toast.error("User not authenticated");
+      return;
+    }
+
     onChapterSelect(chapter);
     setLoading(true);
     try {
-      const questionsData = await generateTestQuestions(chapter.title, chapter.content, 5);
+      const questionsData = await generateTestQuestions(chapter.content || "", userId);
       
       const formattedQuestions = questionsData.map((q, index) => ({
         id: index + 1,
@@ -121,6 +136,11 @@ const TestModal = ({ isOpen, onClose, course, selectedChapter, onChapterSelect, 
   };
 
   const handleSelectEntireCourse = async () => {
+    if (!userId) {
+      toast.error("User not authenticated");
+      return;
+    }
+
     setLoading(true);
     try {
       let allQuestions: Question[] = [];
@@ -128,7 +148,7 @@ const TestModal = ({ isOpen, onClose, course, selectedChapter, onChapterSelect, 
       
       for (const chapter of course.chapters || []) {
         try {
-          const chapterQuestions = await generateTestQuestions(chapter.title, chapter.content, 3);
+          const chapterQuestions = await generateTestQuestions(chapter.content || "", userId);
           
           const formattedQuestions = chapterQuestions.map((q) => ({
             id: ++index,

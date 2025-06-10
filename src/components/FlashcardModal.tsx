@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { BookOpen, Loader2, X, ArrowLeft, ArrowRight, RotateCw, ChevronRight } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -7,6 +7,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { generateFlashcards } from '@/services/contentGenerator';
 import { toast } from 'sonner';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { supabase } from '@/integrations/supabase/client';
 
 interface FlashcardModalProps {
   isOpen: boolean;
@@ -29,17 +30,31 @@ const FlashcardModal = ({ isOpen, onClose, course, selectedChapter, onChapterSel
   const [currentFlashcard, setCurrentFlashcard] = useState(0);
   const [flipped, setFlipped] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const getUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setUserId(user?.id || null);
+    };
+    getUser();
+  }, []);
 
   const handleSelectChapter = async (chapter: Chapter) => {
+    if (!userId) {
+      toast.error("User not authenticated");
+      return;
+    }
+
     onChapterSelect(chapter);
     setLoading(true);
     try {
-      const flashcardsData = await generateFlashcards(chapter.title, chapter.content);
+      const flashcardsData = await generateFlashcards(chapter.content || "", userId);
       
       const formattedFlashcards = flashcardsData.map((card, index) => ({
         id: index + 1,
-        front: card.front,
-        back: card.back
+        front: card.question,
+        back: card.answer
       }));
       
       setFlashcards(formattedFlashcards);
@@ -56,6 +71,11 @@ const FlashcardModal = ({ isOpen, onClose, course, selectedChapter, onChapterSel
   };
 
   const handleSelectEntireCourse = async () => {
+    if (!userId) {
+      toast.error("User not authenticated");
+      return;
+    }
+
     setLoading(true);
     try {
       let allFlashcards: Flashcard[] = [];
@@ -63,12 +83,12 @@ const FlashcardModal = ({ isOpen, onClose, course, selectedChapter, onChapterSel
       
       for (const chapter of course.chapters || []) {
         try {
-          const chapterFlashcards = await generateFlashcards(chapter.title, chapter.content);
+          const chapterFlashcards = await generateFlashcards(chapter.content || "", userId);
           
           const formattedFlashcards = chapterFlashcards.map((card) => ({
             id: ++index,
-            front: card.front,
-            back: card.back
+            front: card.question,
+            back: card.answer
           }));
           
           allFlashcards = [...allFlashcards, ...formattedFlashcards];

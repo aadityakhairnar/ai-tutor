@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -6,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/use-toast';
 import { Eye, EyeOff, Mail } from 'lucide-react';
+import { UserPreferencesForm } from '@/components/UserPreferencesForm';
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -13,6 +13,7 @@ const Auth = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPreferences, setShowPreferences] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -32,6 +33,7 @@ const Auth = () => {
           title: "Success!",
           description: "Please check your email to verify your account.",
         });
+        setShowPreferences(true);
       } else {
         navigate('/dashboard');
       }
@@ -45,6 +47,24 @@ const Auth = () => {
       setLoading(false);
     }
   };
+
+  if (showPreferences) {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-4 py-12 sm:px-6 lg:px-8">
+        <div className="w-full max-w-md space-y-8">
+          <div className="text-center">
+            <h2 className="mt-6 text-3xl font-bold tracking-tight">
+              Tell us about yourself
+            </h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              This information will help us personalize your learning experience
+            </p>
+          </div>
+          <UserPreferencesForm />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-12 sm:px-6 lg:px-8">

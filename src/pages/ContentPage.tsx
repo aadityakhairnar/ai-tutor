@@ -1,4 +1,3 @@
-
 import { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, BookOpen, CheckCircle, Circle, ChevronLeft, ChevronRight } from 'lucide-react';
@@ -20,6 +19,7 @@ import DoubtsChat from '@/components/DoubtsChat';
 import SelectionQuote from '@/components/SelectionQuote';
 import ContentDock from '@/components/ContentDock';
 import Highlighter from '@/components/Highlighter';
+import { supabase } from '@/integrations/supabase/client';
 
 const ContentPage = () => {
   const { courseId, chapterId } = useParams<{ courseId: string; chapterId: string }>();
@@ -47,6 +47,17 @@ const ContentPage = () => {
   const previousChapter = courseId && chapterId ? getPreviousChapter(courseId, chapterId) : null;
   const nextChapter = courseId && chapterId ? getNextChapter(courseId, chapterId) : null;
   
+  // Get user ID from Supabase auth
+  const [userId, setUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const getUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setUserId(user?.id || null);
+    };
+    getUser();
+  }, []);
+  
   useEffect(() => {
     if (!course) {
       toast.error('Course not found');
@@ -69,7 +80,7 @@ const ContentPage = () => {
   }, [course, chapter, courseId, chapterId, navigate]);
   
   const generateContent = async () => {
-    if (!course || !chapter || !courseId) return;
+    if (!course || !chapter || !courseId || !userId) return;
     
     setIsLoading(true);
     setProgress(0);
@@ -86,7 +97,7 @@ const ContentPage = () => {
     }, 500);
     
     try {
-      const content = await generateChapterContent(chapter.title, chapter.content || "");
+      const content = await generateChapterContent(chapter.title, chapter.content || "", userId);
       
       updateChapterContent(courseId, chapter.id, content);
       
