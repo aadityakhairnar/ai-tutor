@@ -97,6 +97,8 @@ const Profile = () => {
                 throw error;
               }
               setPreferences(data);
+              // Navigate to dashboard after successful save and fetch
+              navigate('/dashboard');
             } catch (error: any) {
               toast({
                 title: "Error",

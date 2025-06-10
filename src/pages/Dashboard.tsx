@@ -22,27 +22,74 @@ const Dashboard = () => {
   
   useEffect(() => {
     const checkUserPreferences = async () => {
-      if (user) {
+      if (!user) {
+        console.log('No user found');
+        return;
+      }
+
+      try {
+        console.log('Checking preferences for user:', user.id);
         const { data, error } = await supabase
           .from('user_preferences')
-          .select('id')
+          .select('*')
           .eq('user_id', user.id)
-          .single();
+          .maybeSingle();
 
-        if (error && error.code === 'PGRST116') { // PGRST116 means no rows returned
+        console.log('Supabase response:', { data, error });
+
+        if (error) {
+          console.error('Database error:', error);
+          toast({
+            title: "Error",
+            description: "Failed to check your profile status. Please try again.",
+            variant: "destructive"
+          });
+          return;
+        }
+
+        if (!data) {
+          console.log('No preferences found for user');
           toast({
             title: "Welcome!",
             description: "Please complete your profile to personalize your learning experience.",
             variant: "default"
           });
           navigate('/profile');
-        } else if (error) {
-          toast({
-            title: "Error",
-            description: error.message,
-            variant: "destructive"
-          });
+          return;
         }
+
+        // Check if all required fields are filled out
+        console.log('Checking field values:', {
+          education_level: data.education_level,
+          age: data.age,
+          content_tone: data.content_tone,
+          experience_level: data.experience_level,
+          interested_topics: data.interested_topics
+        });
+
+        if (!data.education_level || !data.age || !data.content_tone || 
+            !data.experience_level || !data.interested_topics || 
+            data.interested_topics.length === 0) {
+          console.log('Incomplete profile detected');
+          toast({
+            title: "Profile Incomplete",
+            description: "Please complete all fields in your profile to continue.",
+            variant: "default"
+          });
+          navigate('/profile');
+          return;
+        }
+
+        console.log('Profile complete, staying on dashboard');
+        // If we get here, it means we found complete preferences for this user
+        // No need to do anything, just stay on the dashboard
+      } catch (err) {
+        console.error('Unexpected error checking preferences:', err);
+        toast({
+          title: "Error",
+          description: "An unexpected error occurred. Please try again.",
+          variant: "destructive"
+        });
       }
     };
 

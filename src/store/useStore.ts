@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 export type CourseStatus = 'completed' | 'ongoing' | 'planned';
 
@@ -17,20 +19,18 @@ export interface Course {
 export interface Chapter {
   id: string;
   title: string;
-  content: string;
+  content?: string;
   completed: boolean;
 }
 
 export interface Flashcard {
   id: string;
-  chapterId: string;
-  front: string;
-  back: string;
+  question: string;
+  answer: string;
 }
 
 export interface TestQuestion {
   id: string;
-  chapterId: string;
   question: string;
   options: string[];
   correctAnswer: number;
@@ -47,14 +47,14 @@ interface StoreState {
   } | null;
   flashcards: Record<string, Flashcard[]>;
   testQuestions: Record<string, TestQuestion[]>;
-  addCourse: (course: Course) => void;
-  updateCourse: (courseId: string, updates: Partial<Course>) => void;
-  removeCourse: (courseId: string) => void;
+  addCourse: (course: Course) => Promise<void>;
+  updateCourse: (courseId: string, updates: Partial<Course>) => Promise<void>;
+  removeCourse: (courseId: string) => Promise<void>;
   setActiveCourse: (course: Course | null) => void;
   setSyllabus: (syllabus: StoreState['syllabus']) => void;
-  markChapterCompleted: (courseId: string, chapterId: string, completed: boolean) => void;
-  updateCourseStatus: (courseId: string, status: CourseStatus) => void;
-  updateChapterContent: (courseId: string, chapterId: string, content: string) => void;
+  markChapterCompleted: (courseId: string, chapterId: string, completed: boolean) => Promise<void>;
+  updateCourseStatus: (courseId: string, status: CourseStatus) => Promise<void>;
+  updateChapterContent: (courseId: string, chapterId: string, content: string) => Promise<void>;
   getChapterContent: (courseId: string, chapterId: string) => string;
   getNextChapter: (courseId: string, currentChapterId: string) => Chapter | null;
   getPreviousChapter: (courseId: string, currentChapterId: string) => Chapter | null;
@@ -64,9 +64,8 @@ interface StoreState {
   addTestQuestions: (courseId: string, chapterId: string, questions: Omit<TestQuestion, 'id'>[]) => void;
   getTestQuestionsForChapter: (courseId: string, chapterId: string) => TestQuestion[];
   getTestQuestionsForCourse: (courseId: string) => TestQuestion[];
+  loadUserCourses: () => Promise<void>;
 }
-
-const sampleCourses: Course[] = [];
 
 export const useStore = create<StoreState>()(
   persist(
@@ -77,99 +76,210 @@ export const useStore = create<StoreState>()(
       flashcards: {},
       testQuestions: {},
       
-      addCourse: (course) => set((state) => ({ 
-        courses: [...state.courses, course] 
-      })),
+      loadUserCourses: async () => {
+        const { data: coursesData, error: coursesError } = await supabase
+          .from('courses')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (coursesError) {
+          console.error('Error loading courses:', coursesError);
+          return;
+        }
+
+        // Load chapters for each course
+        const coursesWithChapters = await Promise.all(
+          coursesData.map(async (course) => {
+            const { data: chaptersData, error: chaptersError } = await supabase
+              .from('chapters')
+              .select('*')
+              .eq('course_id', course.id)
+              .order('created_at', { ascending: true });
+
+            if (chaptersError) {
+              console.error('Error loading chapters:', chaptersError);
+              return {
+                id: course.id,
+                title: course.title,
+                description: course.description || '',
+                status: course.status,
+                progress: course.progress || 0,
+                createdAt: course.created_at,
+                updatedAt: course.updated_at,
+                chapters: []
+              };
+            }
+
+            return {
+              id: course.id,
+              title: course.title,
+              description: course.description || '',
+              status: course.status,
+              progress: course.progress || 0,
+              createdAt: course.created_at,
+              updatedAt: course.updated_at,
+              chapters: chaptersData.map(chapter => ({
+                id: chapter.id.toString(),
+                title: chapter.title,
+                content: chapter.content || '',
+                completed: chapter.completed
+              }))
+            };
+          })
+        );
+
+        set({ courses: coursesWithChapters });
+      },
       
-      updateCourse: (courseId, updates) => set((state) => ({ 
-        courses: state.courses.map(course => 
-          course.id === courseId ? { ...course, ...updates, updatedAt: new Date().toISOString() } : course
-        ) 
-      })),
+      addCourse: async (course) => {
+        const { data: courseData, error: courseError } = await supabase
+          .from('courses')
+          .insert({
+            title: course.title,
+            description: course.description,
+            status: course.status,
+            progress: course.progress
+          })
+          .select()
+          .single();
+
+        if (courseError) {
+          console.error('Error adding course:', courseError);
+          return;
+        }
+
+        // Add chapters if they exist
+        if (course.chapters && course.chapters.length > 0) {
+          const { error: chaptersError } = await supabase
+            .from('chapters')
+            .insert(
+              course.chapters.map(chapter => ({
+                course_id: courseData.id,
+                title: chapter.title,
+                content: chapter.content,
+                completed: chapter.completed
+              }))
+            );
+
+          if (chaptersError) {
+            console.error('Error adding chapters:', chaptersError);
+            return;
+          }
+        }
+
+        // Reload courses to get the latest data
+        await get().loadUserCourses();
+      },
       
-      removeCourse: (courseId) => set((state) => ({ 
-        courses: state.courses.filter(course => course.id !== courseId) 
-      })),
+      updateCourse: async (courseId, updates) => {
+        const { error } = await supabase
+          .from('courses')
+          .update({
+            ...updates,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', courseId);
+
+        if (error) {
+          console.error('Error updating course:', error);
+          return;
+        }
+
+        // Reload courses to get the latest data
+        await get().loadUserCourses();
+      },
+      
+      removeCourse: async (courseId) => {
+        const { error } = await supabase
+          .from('courses')
+          .delete()
+          .eq('id', courseId);
+
+        if (error) {
+          console.error('Error removing course:', error);
+          return;
+        }
+
+        // Reload courses to get the latest data
+        await get().loadUserCourses();
+      },
       
       setActiveCourse: (course) => set({ activeCourse: course }),
       
       setSyllabus: (syllabus) => set({ syllabus }),
       
-      markChapterCompleted: (courseId, chapterId, completed) => set((state) => {
-        const updatedCourses = state.courses.map(course => {
-          if (course.id === courseId && course.chapters) {
-            const updatedChapters = course.chapters.map(chapter => 
-              chapter.id === chapterId ? { ...chapter, completed } : chapter
-            );
-            
-            const totalChapters = updatedChapters.length;
-            const completedChapters = updatedChapters.filter(ch => ch.completed).length;
-            const newProgress = totalChapters > 0 ? Math.round((completedChapters / totalChapters) * 100) : 0;
-            
-            return {
-              ...course,
-              chapters: updatedChapters,
-              progress: newProgress,
-              updatedAt: new Date().toISOString()
-            };
-          }
-          return course;
-        });
-        
-        return { courses: updatedCourses };
-      }),
+      markChapterCompleted: async (courseId, chapterId, completed) => {
+        const { error } = await supabase
+          .from('chapters')
+          .update({
+            completed,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', chapterId)
+          .eq('course_id', courseId);
+
+        if (error) {
+          console.error('Error marking chapter completed:', error);
+          return;
+        }
+
+        // Update course progress
+        const { data: chapters } = await supabase
+          .from('chapters')
+          .select('completed')
+          .eq('course_id', courseId);
+
+        if (chapters) {
+          const totalChapters = chapters.length;
+          const completedChapters = chapters.filter(ch => ch.completed).length;
+          const newProgress = totalChapters > 0 ? Math.round((completedChapters / totalChapters) * 100) : 0;
+
+          await get().updateCourse(courseId, { progress: newProgress });
+        }
+      },
       
-      updateCourseStatus: (courseId, status) => set((state) => ({
-        courses: state.courses.map(course => 
-          course.id === courseId 
-            ? { ...course, status, updatedAt: new Date().toISOString() } 
-            : course
-        )
-      })),
+      updateCourseStatus: async (courseId, status) => {
+        await get().updateCourse(courseId, { status });
+      },
       
-      updateChapterContent: (courseId, chapterId, content) => set((state) => {
-        const updatedCourses = state.courses.map(course => {
-          if (course.id === courseId && course.chapters) {
-            const updatedChapters = course.chapters.map(chapter => 
-              chapter.id === chapterId ? { ...chapter, content } : chapter
-            );
-            
-            return {
-              ...course,
-              chapters: updatedChapters,
-              updatedAt: new Date().toISOString()
-            };
-          }
-          return course;
-        });
-        
-        return { courses: updatedCourses };
-      }),
+      updateChapterContent: async (courseId, chapterId, content) => {
+        const { error } = await supabase
+          .from('chapters')
+          .update({
+            content,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', chapterId)
+          .eq('course_id', courseId);
+
+        if (error) {
+          console.error('Error updating chapter content:', error);
+          return;
+        }
+
+        // Reload courses to get the latest data
+        await get().loadUserCourses();
+      },
       
       getChapterContent: (courseId, chapterId) => {
-        const state = get();
-        const course = state.courses.find(c => c.id === courseId);
+        const course = get().courses.find(c => c.id === courseId);
         const chapter = course?.chapters?.find(ch => ch.id === chapterId);
         return chapter?.content || '';
       },
       
       getNextChapter: (courseId, currentChapterId) => {
-        const state = get();
-        const course = state.courses.find(c => c.id === courseId);
-        
-        if (!course?.chapters?.length) return null;
+        const course = get().courses.find(c => c.id === courseId);
+        if (!course?.chapters) return null;
         
         const currentIndex = course.chapters.findIndex(ch => ch.id === currentChapterId);
-        if (currentIndex < 0 || currentIndex >= course.chapters.length - 1) return null;
+        if (currentIndex === -1 || currentIndex === course.chapters.length - 1) return null;
         
         return course.chapters[currentIndex + 1];
       },
       
       getPreviousChapter: (courseId, currentChapterId) => {
-        const state = get();
-        const course = state.courses.find(c => c.id === courseId);
-        
-        if (!course?.chapters?.length) return null;
+        const course = get().courses.find(c => c.id === courseId);
+        if (!course?.chapters) return null;
         
         const currentIndex = course.chapters.findIndex(ch => ch.id === currentChapterId);
         if (currentIndex <= 0) return null;
@@ -177,67 +287,56 @@ export const useStore = create<StoreState>()(
         return course.chapters[currentIndex - 1];
       },
       
-      addFlashcards: (courseId, chapterId, newFlashcards) => set((state) => {
-        const courseFlashcards = state.flashcards[courseId] || [];
-        const flashcardsWithIds = newFlashcards.map((card, index) => ({
-          ...card,
-          id: `${courseId}-${chapterId}-${Date.now()}-${index}`,
-          chapterId
-        }));
-        
-        return {
+      addFlashcards: (courseId, chapterId, flashcards) => {
+        set(state => ({
           flashcards: {
             ...state.flashcards,
-            [courseId]: [...courseFlashcards, ...flashcardsWithIds]
+            [`${courseId}-${chapterId}`]: flashcards.map((f, index) => ({
+              ...f,
+              id: `${courseId}-${chapterId}-${index}`
+            }))
           }
-        };
-      }),
+        }));
+      },
       
       getFlashcardsForChapter: (courseId, chapterId) => {
-        const state = get();
-        const courseFlashcards = state.flashcards[courseId] || [];
-        return courseFlashcards.filter(card => card.chapterId === chapterId);
+        return get().flashcards[`${courseId}-${chapterId}`] || [];
       },
       
       getFlashcardsForCourse: (courseId) => {
-        const state = get();
-        return state.flashcards[courseId] || [];
+        return Object.entries(get().flashcards)
+          .filter(([key]) => key.startsWith(`${courseId}-`))
+          .flatMap(([_, cards]) => cards);
       },
       
-      addTestQuestions: (courseId, chapterId, newQuestions) => set((state) => {
-        const courseQuestions = state.testQuestions[courseId] || [];
-        const questionsWithIds = newQuestions.map((question, index) => ({
-          ...question,
-          id: `${courseId}-${chapterId}-${Date.now()}-${index}`,
-          chapterId
-        }));
-        
-        return {
+      addTestQuestions: (courseId, chapterId, questions) => {
+        set(state => ({
           testQuestions: {
             ...state.testQuestions,
-            [courseId]: [...courseQuestions, ...questionsWithIds]
+            [`${courseId}-${chapterId}`]: questions.map((q, index) => ({
+              ...q,
+              id: `${courseId}-${chapterId}-${index}`
+            }))
           }
-        };
-      }),
+        }));
+      },
       
       getTestQuestionsForChapter: (courseId, chapterId) => {
-        const state = get();
-        const courseQuestions = state.testQuestions[courseId] || [];
-        return courseQuestions.filter(question => question.chapterId === chapterId);
+        return get().testQuestions[`${courseId}-${chapterId}`] || [];
       },
       
       getTestQuestionsForCourse: (courseId) => {
-        const state = get();
-        return state.testQuestions[courseId] || [];
-      },
+        return Object.entries(get().testQuestions)
+          .filter(([key]) => key.startsWith(`${courseId}-`))
+          .flatMap(([_, questions]) => questions);
+      }
     }),
     {
-      name: 'acampus-storage',
-      partialize: (state) => ({ 
-        courses: state.courses,
+      name: 'app-storage',
+      partialize: (state) => ({
         flashcards: state.flashcards,
         testQuestions: state.testQuestions
-      }),
+      })
     }
   )
 );
